@@ -51,9 +51,9 @@ jobs:
 
     - name: Deploy staging
       run: |
-        kubectl -n mr-staging set image deployment/mysticriver-api mysticriver-api=$IMAGE:${{ github.sha }} || true
-        kubectl apply -n mr-staging -f k8s/base
-        kubectl apply -f k8s/staging
+        kubectl --context=mysticriver-staging -n mr-staging set image deployment/mysticriver-api mysticriver-api=$IMAGE:${{ github.sha }} || true
+        kubectl --context=mysticriver-staging -n mr-staging apply -f k8s/base
+        kubectl --context=mysticriver-staging -n mr-staging apply -f k8s/staging
 
   deploy-prod:
     needs: deploy-staging
@@ -71,6 +71,6 @@ jobs:
 
     - name: Deploy prod
       run: |
-        kubectl -n mr-prod set image deployment/mysticriver-api mysticriver-api=$IMAGE:${{ github.sha }} || true
-        kubectl apply -n mr-prod -f k8s/base
-        kubectl apply -f k8s/prod
+        kubectl --context=mysticriver-prod -n mr-prod set image deployment/mysticriver-api mysticriver-api=$IMAGE:${{ github.sha }} || true
+        kubectl --context=mysticriver-prod -n mr-prod apply -f k8s/base
+        kubectl --context=mysticriver-prod -n mr-prod apply -f k8s/prod
