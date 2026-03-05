@@ -6,4 +6,14 @@
   <Folder Name="/Frontend/">
     <Project Path="MysticRiver.Client/MysticRiver.Client.csproj" Id="6afa2f12-323f-4f9d-b401-04e57fc444b0" />
   </Folder>
+  <Folder Name="/k8s/">
+    <File Path="deployment.yaml" />
+    <File Path="ingress-prod.yaml" />
+    <File Path="ingress-staging.yaml" />
+    <File Path="service.yaml" />
+  </Folder>
+  <Folder Name="/Solution Items/">
+    <File Path=".dockerignore" />
+    <File Path="Dockerfile" />
+  </Folder>
 </Solution>
