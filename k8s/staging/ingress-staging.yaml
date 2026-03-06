@@ -4,7 +4,7 @@ metadata:
   name: mysticriver-api
 spec:
   rules:
-  - host: mysticriver-staging.pm4.lab.ch
+  - host: mysticriver-staging.pm4.init-lab.ch
     http:
       paths:
       - path: /
