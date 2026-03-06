@@ -7,10 +7,16 @@
     <Project Path="MysticRiver.Client/MysticRiver.Client.csproj" Id="6afa2f12-323f-4f9d-b401-04e57fc444b0" />
   </Folder>
   <Folder Name="/k8s/">
-    <File Path="deployment.yaml" />
-    <File Path="ingress-prod.yaml" />
-    <File Path="ingress-staging.yaml" />
-    <File Path="service.yaml" />
+  </Folder>
+  <Folder Name="/k8s/base/">
+    <File Path="k8s/base/deployment.yaml" />
+    <File Path="k8s/base/service.yaml" />
+  </Folder>
+   <Folder Name="/k8s/staging/">
+     <File Path="k8s/staging/ingress-staging.yaml" />
+   </Folder>
+  <Folder Name="/k8s/prod/">
+    <File Path="k8s/prod/ingress-prod.yaml" />
   </Folder>
   <Folder Name="/Solution Items/">
     <File Path=".dockerignore" />

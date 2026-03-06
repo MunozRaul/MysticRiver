@@ -1,0 +1,19 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mysticriver-api
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: mysticriver-api
+  template:
+    metadata:
+      labels:
+        app: mysticriver-api
+    spec:
+      containers:
+      - name: mysticriver-api
+        image: ghcr.io/munozraul/mysticriver/mysticriver-api:latest
+        ports:
+        - containerPort: 8080
