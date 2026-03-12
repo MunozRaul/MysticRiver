@@ -123,7 +123,7 @@ The following recurring availability constraints are known within the team:
 
 A task is considered complete when:
 
-- [ ] Code is integrated into the develop branch
+- [ ] Code is merged into the main branch
 - [ ] Pull request has been reviewed
 - [ ] Tests are implemented and completed sucessfully
 - [ ] CI build is successful
@@ -150,6 +150,7 @@ We follow a simplified GitFlow strategy.
 - Create a pull request
 - Perform code review
 - Merge into `develop`
+- Merge `develop` into `main`
 
 #### Commit Message Convention
 
@@ -227,14 +228,14 @@ The goal is continuous improvement of collaboration and the development process.
 
 ## 📝 Signatures
 
-By providing our (digital) signatures, we confirm that we accept these rules.Unterschriften
+By providing our (digital) signatures, we confirm that we accept these rules.
 
 | Name | Date | Signature |
 |------|-------|-------------|
 | Kevin Fust | 12.03 | kefu |
 | Tobias Marxer |  |  |
 | Simon Leu |  |  |
-| Raul Munoz Peña |  | |
+| Raul Munoz Peña | 12.03 | munozrau |
 | Etienne Gündüz|  |  |
 | Ramón Gallego|  |  |
 | Rubén Mena |  |  |
