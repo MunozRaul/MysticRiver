@@ -237,6 +237,6 @@ By providing our (digital) signatures, we confirm that we accept these rules.
 | Simon Leu |  |  |
 | Raul Munoz Peña | 12.03 | munozrau |
 | Etienne Gündüz|  |  |
-| Ramón Gallego|  |  |
+| Ramón Gallego| 12.03 | galleram |
 | Rubén Mena |  |  |
  
