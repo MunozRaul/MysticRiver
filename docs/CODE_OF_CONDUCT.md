@@ -81,7 +81,7 @@ The following recurring availability constraints are known within the team:
 |-------------|-----------|
 | Kevin Fust | Not available on Wednesday evenings |
 | Tobias Marxer |  |
-| Simon Leu |  |
+| Simon Leu | Not available on Saturday afternoons |
 | Raul Munoz Peña |
 | Etienne Gündüz|  |
 | Ramón Gallego|  |
@@ -234,7 +234,7 @@ By providing our (digital) signatures, we confirm that we accept these rules.
 |------|-------|-------------|
 | Kevin Fust | 12.03 | kefu |
 | Tobias Marxer |  |  |
-| Simon Leu |  |  |
+| Simon Leu | 14.03 | leusim02 |
 | Raul Munoz Peña | 12.03 | munozrau |
 | Etienne Gündüz|  |  |
 | Ramón Gallego| 12.03 | galleram |
