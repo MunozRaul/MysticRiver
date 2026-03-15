@@ -20,6 +20,7 @@
   </Folder>
   <Folder Name="/Solution Items/">
     <File Path=".dockerignore" />
+    <File Path=".github/workflows/check-main-pr.yaml" />
     <File Path="Dockerfile" />
   </Folder>
 </Solution>
