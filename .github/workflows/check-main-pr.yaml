@@ -1,0 +1,20 @@
+name: Enforce staging → main
+
+on:
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  check-source:
+    runs-on: ubuntu-24.04
+
+    steps:
+      - name: Check PR source branch
+        run: |
+          echo "PR source branch: ${{ github.head_ref }}"
+
+          if [ "${{ github.head_ref }}" != "staging" ]; then
+            echo "Only the staging branch can be merged into main."
+            exit 1
+          fi
