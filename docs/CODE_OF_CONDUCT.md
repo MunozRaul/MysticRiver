@@ -108,10 +108,10 @@ The following recurring availability constraints are known within the team:
 
 | Role | Person | Responsibility |
 |------|--------|--------------|
-| Product Owner | - | Management of the product backlog and feature prioritization |
-| Scrum Master / Moderator | - | Facilitates meetings and ensures adherence to the Scrum process |
+| Product Owner | Simon Leu | Management of the product backlog and feature prioritization |
+| Scrum Master / Moderator | Raul Munoz Peña | Facilitates meetings and ensures adherence to the Scrum process |
 | Architecture Lead | Rubén Mena | Technical architecture and overall project structure |
-| CI/CD Responsible | - | Build pipeline, GitHub Actions, and automation |
+| CI/CD Responsible | Ramón Gallego | Build pipeline, GitHub Actions, and automation |
 
 > Roles may rotate during the project.
 
