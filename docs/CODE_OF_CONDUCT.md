@@ -110,7 +110,7 @@ The following recurring availability constraints are known within the team:
 |------|--------|--------------|
 | Product Owner | - | Management of the product backlog and feature prioritization |
 | Scrum Master / Moderator | - | Facilitates meetings and ensures adherence to the Scrum process |
-| Architecture Lead | - | Technical architecture and overall project structure |
+| Architecture Lead | Rubén Mena | Technical architecture and overall project structure |
 | CI/CD Responsible | - | Build pipeline, GitHub Actions, and automation |
 
 > Roles may rotate during the project.
@@ -138,7 +138,7 @@ We follow a simplified GitFlow strategy.
 #### Branching Strategy
 
 - `main` → stable version
-- `develop` → integration branch
+- `staging` → integration branch
 - `feature/<feature-name>` → new features
 - `bugfix/<bug-name>` → bug fixes
 - `docs/<docs-name>` → documentation
@@ -149,8 +149,8 @@ We follow a simplified GitFlow strategy.
 - Implement the feature
 - Create a pull request
 - Perform code review
-- Merge into `develop`
-- Merge `develop` into `main`
+- Merge into `staging`
+- Merge `staging` into `main`
 
 #### Commit Message Convention
 
@@ -238,5 +238,5 @@ By providing our (digital) signatures, we confirm that we accept these rules.
 | Raul Munoz Peña | 12.03 | munozrau |
 | Etienne Gündüz|  |  |
 | Ramón Gallego| 12.03 | galleram |
-| Rubén Mena |  |  |
+| Rubén Mena | 15.03 | menarub1 |
  
