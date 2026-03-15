@@ -236,7 +236,7 @@ By providing our (digital) signatures, we confirm that we accept these rules.
 | Tobias Marxer |  |  |
 | Simon Leu | 14.03 | leusim02 |
 | Raul Munoz Peña | 12.03 | munozrau |
-| Etienne Gündüz|  |  |
+| Etienne Gündüz| 15.03 | guendeti |
 | Ramón Gallego| 12.03 | galleram |
 | Rubén Mena | 15.03 | menarub1 |
  
