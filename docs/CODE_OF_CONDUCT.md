@@ -233,7 +233,7 @@ By providing our (digital) signatures, we confirm that we accept these rules.
 | Name | Date | Signature |
 |------|-------|-------------|
 | Kevin Fust | 12.03 | kefu |
-| Tobias Marxer |  |  |
+| Tobias Marxer | 20.03. | marxetob |
 | Simon Leu | 14.03 | leusim02 |
 | Raul Muñoz Pena | 12.03 | munozrau |
 | Etienne Gündüz| 15.03 | guendeti |
