@@ -1,0 +1,49 @@
+name: Deploy PostgreSQL
+
+on:
+  push:
+    branches:
+      - staging
+      - main
+    paths:
+      - 'k8s/postgres/**'
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Set up kubectl
+        uses: azure/setup-kubectl@v3
+
+      - name: Configure kubeconfig
+        run: |
+          echo "${{ secrets.KUBE_CONFIG }}" > kubeconfig.yaml
+          export KUBECONFIG=$PWD/kubeconfig.yaml
+          
+      - name: Set namespace
+        id: vars
+        run: |
+          if [[ "${GITHUB_REF}" == "refs/heads/main" ]]; then
+            echo "namespace=mr-prod" >> $GITHUB_OUTPUT
+          else
+            echo "namespace=mr-staging" >> $GITHUB_OUTPUT
+          fi
+          
+      - name: Create Postgres Secret
+        run: |
+          kubectl create secret generic postgres-secret \
+            --from-literal=POSTGRES_USER=${{ secrets.POSTGRES_USER }} \
+            --from-literal=POSTGRES_PASSWORD=${{ secrets.POSTGRES_PASSWORD }} \
+            --from-literal=POSTGRES_DB=${{ secrets.POSTGRES_DB }} \
+            --namespace=${{ steps.vars.outputs.namespace }} \
+            --dry-run=client -o yaml | kubectl apply -f -
+            
+      - name: Deploy Postgres
+        run: |
+          kubectl apply -n ${{ steps.vars.outputs.namespace }} -f k8s/postgres/postgres-pvc.yaml
+          kubectl apply -n ${{ steps.vars.outputs.namespace }} -f k8s/postgres/postgres-deployment.yaml
+          kubectl apply -n ${{ steps.vars.outputs.namespace }} -f k8s/postgres/postgres-service.yaml
