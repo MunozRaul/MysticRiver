@@ -15,12 +15,19 @@
    <Folder Name="/k8s/staging/">
      <File Path="k8s/staging/ingress-staging.yaml" />
    </Folder>
+  <Folder Name="/k8s/postgres/">
+    <File Path="postgres-deployment.yaml" />
+    <File Path="postgres-pvc.yaml" />
+    <File Path="postgres-service.yaml" />
+  </Folder>
   <Folder Name="/k8s/prod/">
     <File Path="k8s/prod/ingress-prod.yaml" />
   </Folder>
   <Folder Name="/Solution Items/">
     <File Path=".dockerignore" />
     <File Path=".github/workflows/check-main-pr.yaml" />
+    <File Path=".github/workflows/deploy-postgres.yaml" />
+    <File Path=".github/workflows/deploy.yaml" />
     <File Path="Dockerfile" />
   </Folder>
 </Solution>
