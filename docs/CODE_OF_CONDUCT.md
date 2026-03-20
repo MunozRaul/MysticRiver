@@ -46,7 +46,7 @@ multiplayer synchronization, and DevOps — not on complex graphics or animation
 | Kevin Fust | fustkev1 | fustkev1@students.zhaw.ch | no |
 | Tobias Marxer | marxetob | marxetob@students.zhaw.ch | no |
 | Simon Leu | leusim02 | leusim02@students.zhaw.ch | yes |
-| Raul Munoz Peña | munozrau | munozrau@students.zhaw.ch | no |
+| Raul Muñoz Pena | munozrau | munozrau@students.zhaw.ch | no |
 | Etienne Gündüz| guendeti | guendeti@students.zhaw.ch | no |
 | Ramón Gallego| galleram | galleram@students.zhaw.ch | no |
 | Rubén Mena | menarub1 | menarub1@students.zhaw.ch | no |
@@ -82,7 +82,7 @@ The following recurring availability constraints are known within the team:
 | Kevin Fust | Not available on Wednesday evenings |
 | Tobias Marxer |  |
 | Simon Leu | Not available on Saturday afternoons |
-| Raul Munoz Peña |
+| Raul Muñoz Pena |
 | Etienne Gündüz|  |
 | Ramón Gallego|  |
 | Rubén Mena |  |
@@ -109,7 +109,7 @@ The following recurring availability constraints are known within the team:
 | Role | Person | Responsibility |
 |------|--------|--------------|
 | Product Owner | Simon Leu | Management of the product backlog and feature prioritization |
-| Scrum Master / Moderator | Raul Munoz Peña | Facilitates meetings and ensures adherence to the Scrum process |
+| Scrum Master / Moderator | Raul Muñoz Pena | Facilitates meetings and ensures adherence to the Scrum process |
 | Architecture Lead | Rubén Mena | Technical architecture and overall project structure |
 | CI/CD Responsible | Ramón Gallego | Build pipeline, GitHub Actions, and automation |
 
@@ -235,7 +235,7 @@ By providing our (digital) signatures, we confirm that we accept these rules.
 | Kevin Fust | 12.03 | kefu |
 | Tobias Marxer |  |  |
 | Simon Leu | 14.03 | leusim02 |
-| Raul Munoz Peña | 12.03 | munozrau |
+| Raul Muñoz Pena | 12.03 | munozrau |
 | Etienne Gündüz| 15.03 | guendeti |
 | Ramón Gallego| 12.03 | galleram |
 | Rubén Mena | 15.03 | menarub1 |
