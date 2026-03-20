@@ -30,4 +30,7 @@
     <File Path=".github/workflows/deploy.yaml" />
     <File Path="Dockerfile" />
   </Folder>
+  <Folder Name="/test/">
+    <Project Path="test/MysticRiver.IntegrationTests/MysticRiver.IntegrationTests.csproj" />
+  </Folder>
 </Solution>
