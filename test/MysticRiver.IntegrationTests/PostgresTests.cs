@@ -1,19 +1,18 @@
-﻿using DotNet.Testcontainers.Containers;
-using Microsoft.Extensions.Configuration;
+﻿using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using MysticRiver.IntegrationTests;
 using Npgsql;
 using Testcontainers.PostgreSql;
 
-// TODO: discuss in Team if `IntegrationTestBase` or idiomatic IClassFixture<TFixture> ?
+namespace MysticRiver.IntegrationTests;
 
 public class PostgresTests : IntegrationTestBase
 {
+    private PostgreSqlContainer postgreSql = null!;
+
     [Fact]
     public void Test1()
     {
-        var sql = TestContext.Containers[typeof(PostgreSqlContainer)] as PostgreSqlContainer;
-        var connStr = sql!.GetConnectionString();
+        var connStr = postgreSql.GetConnectionString();
 
         using var conn = new NpgsqlConnection(connStr);
         conn.Open();
@@ -24,24 +23,22 @@ public class PostgresTests : IntegrationTestBase
         Assert.Equal(1, Convert.ToInt32(result));
     }
 
-    public override async ValueTask OnInitializeAsync(
+    public override ValueTask OnInitializeAsync(
         IServiceCollection services,
-        IConfigurationManager configuration,
-        Dictionary<Type, IContainer> containers)
+        IConfigurationManager configuration)
     {
-        var postgresSql = new PostgreSqlBuilder("postgres:18.3")
+        services.AddPostgreSqlContainer("postgres:18.3", builder => builder
             .WithDatabase("mysticriver")
             .WithUsername("mysticriver")
             .WithPassword("mysticriver")
-            .Build();
+        );
 
-        containers[typeof(PostgreSqlContainer)] = postgresSql;
-        await postgresSql.StartAsync();
+        return ValueTask.CompletedTask;
     }
 
-    public override async ValueTask OnDisposeAsync(TestContext ctx)
+    public override ValueTask AfterInitializeAsync(TestContext ctx)
     {
-        if (ctx.Containers[typeof(PostgreSqlContainer)] is PostgreSqlContainer sql)
-            await sql.StopAsync();
+        postgreSql = ctx.Services.GetRequiredService<PostgreSqlContainer>();
+        return ValueTask.CompletedTask;
     }
 }
