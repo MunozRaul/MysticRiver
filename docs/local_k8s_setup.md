@@ -6,6 +6,21 @@ If the minikube tab is not visible after activating the extension, run this in t
 choco install minikube oder winget install Kubernetes.minikube 
 and then restart podman
 
+### Linux Setup Notes
+On Linux, the minikube CLI must be installed manually.
+
+curl -LO https://storage.googleapis.com/minikube/releases/latest/minikube-linux-amd64
+sudo install minikube-linux-amd64 /usr/local/bin/minikube
+
+Note: This command is for x86_64 (Intel/AMD) systems.
+
+Then start minikube with Podman:
+minikube config set driver podman
+minikube config set rootless true
+minikube start --driver=podman
+
+Note: On Linux, use ':' instead of ';' for KUBECONFIG.
+
 After finishing that tutorial, you should have a config file in the C:\Users\{user}\.kube folder. This is the localhost config
 Then you can go to the link https://pm4.init-lab.ch/dashboard/c/local/explorer#cluster-events and click on the file icon in the top right corner "download KubeConfig"
 Copy this file into your .kube folder as well and rename it to config-pm4 (without file extension)
