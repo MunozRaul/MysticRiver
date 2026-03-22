@@ -3,6 +3,7 @@ name: Build and Deploy
 on:
   push:
     branches: [ main, staging ]
+  workflow_dispatch:
 
 env:
   IMAGE: ghcr.io/munozraul/mysticriver/mysticriver-api
