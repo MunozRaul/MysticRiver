@@ -5,33 +5,50 @@ using MysticRiver.IntegrationTests;
 
 public abstract class IntegrationTestBase : IAsyncLifetime
 {
-    protected TestContext TestContext { get; private set; } = null!;
+    private TestContext TestContext { get; set; } = null!;
+    private List<IContainer> containers = new List<IContainer>();
 
     public async Task InitializeAsync()
     {
         var services = new ServiceCollection();
         var configuration = new ConfigurationManager();
-        var containers = new Dictionary<Type, IContainer>();
 
-        await OnInitializeAsync(services, configuration, containers);
+        services.AddKeyedSingleton(DependenyInjection.ContainerGroupKey, containers);
+        await OnInitializeAsync(services, configuration).ConfigureAwait(false);
 
         TestContext = new TestContext(
             services.BuildServiceProvider(),
-            configuration,
-            containers
+            configuration
         );
+
+        await Task.WhenAll(containers.Select(async c =>
+            await c.StartAsync().ConfigureAwait(false))
+        ).ConfigureAwait(false);
+
+        await AfterInitializeAsync(TestContext).ConfigureAwait(false);
     }
 
     public async Task DisposeAsync()
     {
-        await OnDisposeAsync(TestContext);
+        await Task.WhenAll(containers.Select(async c =>
+        {
+            await c.StopAsync().ConfigureAwait(false);
+            await c.DisposeAsync().ConfigureAwait(false);
+        })).ConfigureAwait(false);
+
+        await OnDisposeAsync(TestContext).ConfigureAwait(false);
     }
 
     public virtual ValueTask OnInitializeAsync(
         IServiceCollection services,
-        IConfigurationManager configuration,
-        Dictionary<Type, IContainer> containers
+        IConfigurationManager configuration
     ) => ValueTask.CompletedTask;
 
-    public virtual ValueTask OnDisposeAsync(TestContext ctx) => ValueTask.CompletedTask;
+    public virtual ValueTask AfterInitializeAsync(
+        TestContext ctx
+    ) => ValueTask.CompletedTask;
+
+    public virtual ValueTask OnDisposeAsync(
+        TestContext ctx
+    ) => ValueTask.CompletedTask;
 }

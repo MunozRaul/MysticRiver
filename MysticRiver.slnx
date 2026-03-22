@@ -32,5 +32,6 @@
   </Folder>
   <Folder Name="/test/">
     <Project Path="test/MysticRiver.IntegrationTests/MysticRiver.IntegrationTests.csproj" />
+    <Project Path="test/MysticRiver.UnitTests/MysticRiver.UnitTests.csproj" />
   </Folder>
 </Solution>
