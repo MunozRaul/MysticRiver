@@ -2,11 +2,10 @@ name: Deploy PostgreSQL
 
 on:
   push:
-    branches:
-      - staging
-      - main
+    branches: [ main, staging ]
     paths:
       - 'k8s/postgres/**'
+  workflow_dispatch:
 
 jobs:
   deploy:
