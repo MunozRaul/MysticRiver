@@ -1,9 +1,8 @@
-using DotNet.Testcontainers.Containers;
 using Microsoft.Extensions.Configuration;
 
 namespace MysticRiver.IntegrationTests;
 
-public sealed record TestContext(
+public sealed record TestCtx(
     IServiceProvider Services,
     IConfigurationManager Configuration
 );

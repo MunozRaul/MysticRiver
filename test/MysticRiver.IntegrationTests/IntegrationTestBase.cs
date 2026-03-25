@@ -1,14 +1,15 @@
 using DotNet.Testcontainers.Containers;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using MysticRiver.IntegrationTests;
+
+namespace MysticRiver.IntegrationTests;
 
 public abstract class IntegrationTestBase : IAsyncLifetime
 {
-    private TestContext TestContext { get; set; } = null!;
-    private List<IContainer> containers = new List<IContainer>();
+    private TestCtx TestContext { get; set; } = null!;
+    private readonly List<IContainer> containers = [];
 
-    public async Task InitializeAsync()
+    public async ValueTask InitializeAsync()
     {
         var services = new ServiceCollection();
         var configuration = new ConfigurationManager();
@@ -16,7 +17,7 @@ public abstract class IntegrationTestBase : IAsyncLifetime
         services.AddKeyedSingleton(DependenyInjection.ContainerGroupKey, containers);
         await OnInitializeAsync(services, configuration).ConfigureAwait(false);
 
-        TestContext = new TestContext(
+        TestContext = new TestCtx(
             services.BuildServiceProvider(),
             configuration
         );
@@ -28,7 +29,7 @@ public abstract class IntegrationTestBase : IAsyncLifetime
         await AfterInitializeAsync(TestContext).ConfigureAwait(false);
     }
 
-    public async Task DisposeAsync()
+    public async ValueTask DisposeAsync()
     {
         await Task.WhenAll(containers.Select(async c =>
         {
@@ -45,10 +46,10 @@ public abstract class IntegrationTestBase : IAsyncLifetime
     ) => ValueTask.CompletedTask;
 
     public virtual ValueTask AfterInitializeAsync(
-        TestContext ctx
+        TestCtx ctx
     ) => ValueTask.CompletedTask;
 
     public virtual ValueTask OnDisposeAsync(
-        TestContext ctx
+        TestCtx ctx
     ) => ValueTask.CompletedTask;
 }

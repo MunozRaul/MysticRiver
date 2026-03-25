@@ -36,7 +36,7 @@ public class PostgresTests : IntegrationTestBase
         return ValueTask.CompletedTask;
     }
 
-    public override ValueTask AfterInitializeAsync(TestContext ctx)
+    public override ValueTask AfterInitializeAsync(TestCtx ctx)
     {
         postgreSql = ctx.Services.GetRequiredService<PostgreSqlContainer>();
         return ValueTask.CompletedTask;
