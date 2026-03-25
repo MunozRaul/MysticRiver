@@ -2,40 +2,38 @@ name: Build and Deploy
 
 on:
   push:
-    branches: [ main, staging ]
+    branches: [main, staging]
   workflow_dispatch:
 
 env:
   IMAGE: ghcr.io/munozraul/mysticriver/mysticriver-api
 
 jobs:
-
   build:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     permissions:
       packages: write
       contents: read
 
     steps:
+      - uses: actions/checkout@v4
 
-    - uses: actions/checkout@v4
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0
 
-    - name: Setup .NET
-      uses: actions/setup-dotnet@v4
-      with:
-        dotnet-version: 10.0
+      - run: dotnet restore MysticRiver.HttpApi/MysticRiver.HttpApi.csproj
+      - run: dotnet build MysticRiver.HttpApi/MysticRiver.HttpApi.csproj --configuration Release
 
-    - run: dotnet restore MysticRiver.HttpApi/MysticRiver.HttpApi.csproj
-    - run: dotnet build MysticRiver.HttpApi/MysticRiver.HttpApi.csproj --configuration Release
+      - name: Docker build
+        run: docker build -t $IMAGE:${{ github.sha }} .
 
-    - name: Docker build
-      run: docker build -t $IMAGE:${{ github.sha }} .
+      - name: Login GHCR
+        run: echo ${{ secrets.GITHUB_TOKEN }} | docker login ghcr.io -u ${{ github.actor }} --password-stdin
 
-    - name: Login GHCR
-      run: echo ${{ secrets.GITHUB_TOKEN }} | docker login ghcr.io -u ${{ github.actor }} --password-stdin
-
-    - name: Push image
-      run: docker push $IMAGE:${{ github.sha }}
+      - name: Push image
+        run: docker push $IMAGE:${{ github.sha }}
 
   deploy-staging:
     needs: build
@@ -43,19 +41,18 @@ jobs:
     if: github.ref == 'refs/heads/staging'
 
     steps:
+      - uses: actions/checkout@v4
 
-    - uses: actions/checkout@v4
+      - name: Setup kubeconfig
+        run: |
+          mkdir -p ~/.kube
+          echo "${{ secrets.KUBE_CONFIG }}" > ~/.kube/config
 
-    - name: Setup kubeconfig
-      run: |
-        mkdir -p ~/.kube
-        echo "${{ secrets.KUBE_CONFIG }}" > ~/.kube/config
-
-    - name: Deploy staging
-      run: |
-        kubectl --context=mysticriver-staging -n mr-staging set image deployment/mysticriver-api mysticriver-api=$IMAGE:${{ github.sha }} || true
-        kubectl --context=mysticriver-staging -n mr-staging apply -f k8s/base
-        kubectl --context=mysticriver-staging -n mr-staging apply -f k8s/staging
+      - name: Deploy staging
+        run: |
+          kubectl --context=mysticriver-staging -n mr-staging set image deployment/mysticriver-api mysticriver-api=$IMAGE:${{ github.sha }} || true
+          kubectl --context=mysticriver-staging -n mr-staging apply -f k8s/base
+          kubectl --context=mysticriver-staging -n mr-staging apply -f k8s/staging
 
   deploy-prod:
     needs: build
@@ -64,16 +61,15 @@ jobs:
     environment: production
 
     steps:
+      - uses: actions/checkout@v4
 
-    - uses: actions/checkout@v4
+      - name: Setup kubeconfig
+        run: |
+          mkdir -p ~/.kube
+          echo "${{ secrets.KUBE_CONFIG }}" > ~/.kube/config
 
-    - name: Setup kubeconfig
-      run: |
-        mkdir -p ~/.kube
-        echo "${{ secrets.KUBE_CONFIG }}" > ~/.kube/config
-
-    - name: Deploy prod
-      run: |
-        kubectl --context=mysticriver-prod -n mr-prod set image deployment/mysticriver-api mysticriver-api=$IMAGE:${{ github.sha }} || true
-        kubectl --context=mysticriver-prod -n mr-prod apply -f k8s/base
-        kubectl --context=mysticriver-prod -n mr-prod apply -f k8s/prod
+      - name: Deploy prod
+        run: |
+          kubectl --context=mysticriver-prod -n mr-prod set image deployment/mysticriver-api mysticriver-api=$IMAGE:${{ github.sha }} || true
+          kubectl --context=mysticriver-prod -n mr-prod apply -f k8s/base
+          kubectl --context=mysticriver-prod -n mr-prod apply -f k8s/prod
