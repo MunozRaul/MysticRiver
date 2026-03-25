@@ -25,11 +25,14 @@ jobs:
 
       - name: .NET Tests
         run: |
-          dotnet test \
-            --logger "trx;LogFileName=test-results.trx" \
-            --results-directory TestResults \
-            --blame-hang-timeout 5m \
-            --blame-crash
+          for proj in $(find test -name "*.csproj"); do
+            echo "Running tests in $proj"
+            dotnet test "$proj" \
+              --logger "trx;LogFileName=$(basename $proj .csproj).trx" \
+              --results-directory TestResults \
+              --blame-hang-timeout 5m \
+              --blame-crash
+          done
 
       - name: Upload test artifacts
         if: failure()
