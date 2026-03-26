@@ -9,7 +9,13 @@ env:
   IMAGE: ghcr.io/munozraul/mysticriver/mysticriver-api
 
 jobs:
+  dotnet:
+    uses: ./.github/workflows/reusable-dotnet.yaml
+    with:
+      dotnet-version: 10.0
+
   build:
+    needs: dotnet
     runs-on: ubuntu-24.04
     permissions:
       packages: write
@@ -17,14 +23,6 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
-
-      - name: Setup .NET
-        uses: actions/setup-dotnet@v4
-        with:
-          dotnet-version: 10.0
-
-      - run: dotnet restore MysticRiver.HttpApi/MysticRiver.HttpApi.csproj
-      - run: dotnet build MysticRiver.HttpApi/MysticRiver.HttpApi.csproj --configuration Release
 
       - name: Docker build
         run: docker build -t $IMAGE:${{ github.sha }} .
