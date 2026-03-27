@@ -2,15 +2,14 @@ name: Deploy PostgreSQL
 
 on:
   push:
-    branches:
-      - staging
-      - main
+    branches: [main, staging]
     paths:
-      - 'k8s/postgres/**'
+      - "k8s/postgres/**"
+  workflow_dispatch:
 
 jobs:
   deploy:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
 
     steps:
       - name: Checkout repo
@@ -23,7 +22,7 @@ jobs:
         run: |
           echo "${{ secrets.KUBE_CONFIG }}" > kubeconfig.yaml
           export KUBECONFIG=$PWD/kubeconfig.yaml
-          
+
       - name: Set namespace
         id: vars
         run: |
@@ -32,7 +31,7 @@ jobs:
           else
             echo "namespace=mr-staging" >> $GITHUB_OUTPUT
           fi
-          
+
       - name: Create Postgres Secret
         run: |
           kubectl create secret generic postgres-secret \
@@ -41,7 +40,7 @@ jobs:
             --from-literal=POSTGRES_DB=${{ secrets.POSTGRES_DB }} \
             --namespace=${{ steps.vars.outputs.namespace }} \
             --dry-run=client -o yaml | kubectl apply -f -
-            
+
       - name: Deploy Postgres
         run: |
           kubectl apply -n ${{ steps.vars.outputs.namespace }} -f k8s/postgres/postgres-pvc.yaml

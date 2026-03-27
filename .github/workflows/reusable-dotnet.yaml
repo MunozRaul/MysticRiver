@@ -1,0 +1,55 @@
+on:
+  workflow_call:
+    inputs:
+      dotnet-version:
+        required: true
+        type: string
+
+jobs:
+  dotnet:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ inputs.dotnet-version }}
+
+      - name: .NET Restore
+        run: dotnet restore MysticRiver.HttpApi/MysticRiver.HttpApi.csproj
+
+      - name: .NET Build
+        run: dotnet build MysticRiver.HttpApi/MysticRiver.HttpApi.csproj --configuration Release
+
+      - name: .NET Tests
+        run: |
+          failed=0
+          for proj in $(find test -name "*.csproj"); do
+            echo "Running tests in $proj"
+            dotnet test "$proj" \
+              --logger "trx;LogFileName=$(basename $proj .csproj).trx" \
+              --results-directory TestResults \
+              --blame-hang-timeout 5m \
+              --blame-crash || failed=1
+          done
+          exit $failed
+
+      - name: Upload test artifacts
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-artifacts
+          retention-days: 7
+          path: |
+            TestResults/**/*.trx
+            TestResults/**/Sequence.xml
+
+      - name: Test summary
+        if: always()
+        run: |
+          echo "## Test Results" >> $GITHUB_STEP_SUMMARY
+          if [ -d "TestResults" ]; then
+            echo "Artifacts uploaded (TRX + blame data)." >> $GITHUB_STEP_SUMMARY
+          else
+            echo "No test results found." >> $GITHUB_STEP_SUMMARY
+          fi
