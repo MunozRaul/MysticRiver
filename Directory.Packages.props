@@ -24,6 +24,7 @@
     <PackageVersion Include="Npgsql" Version="10.0.2" />
     <PackageVersion Include="Testcontainers" Version="4.11.0" />
     <PackageVersion Include="Testcontainers.PostgreSql" Version="4.11.0" />
+	<PackageVersion Include="Autoupdater.NET.Official" Version="1.9.2" />
   </ItemGroup>
 
 </Project>

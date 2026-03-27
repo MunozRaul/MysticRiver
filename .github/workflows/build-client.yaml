@@ -1,0 +1,54 @@
+name: Build WPF Client
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  build-client:
+    runs-on: windows-latest
+    env:
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Set version
+        shell: pwsh
+        run: |
+          $version = $env:GITHUB_REF_NAME.TrimStart('v')
+          "VERSION=$version" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          "ASSEMBLY_VERSION=$version.0" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0
+
+      - name: Restore
+        run: dotnet restore
+
+      - name: Publish WPF App
+        shell: pwsh
+        run: |
+          dotnet publish src/MysticRiver.Client/MysticRiver.Client.csproj `
+            -c Release `
+            -r win-x64 `
+            --self-contained true `
+            -p:Version=${{ env.VERSION }} `
+            -p:FileVersion=${{ env.VERSION }} `
+            -p:AssemblyVersion=${{ env.ASSEMBLY_VERSION }} `
+            -o publish
+
+      - name: Zip artifact
+        shell: pwsh
+        run: Compress-Archive -Path publish\* -DestinationPath client-${{ env.VERSION }}.zip -Force
+
+      - name: Upload Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: Release ${{ github.ref_name }}
+          files: client-${{ env.VERSION }}.zip
