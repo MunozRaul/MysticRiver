@@ -25,9 +25,11 @@
   </Folder>
   <Folder Name="/Solution Items/">
     <File Path=".dockerignore" />
+    <File Path=".github/workflows/build-client.yaml" />
     <File Path=".github/workflows/check-main-pr.yaml" />
     <File Path=".github/workflows/deploy-postgres.yaml" />
     <File Path=".github/workflows/deploy.yaml" />
+    <File Path=".github/workflows/reusable-dotnet.yaml" />
     <File Path="Dockerfile" />
   </Folder>
   <Folder Name="/test/">

@@ -14,6 +14,63 @@ jobs:
     with:
       dotnet-version: 10.0
 
+  version:
+    runs-on: ubuntu-24.04
+    if: github.ref == 'refs/heads/main'
+    outputs:
+      version: ${{ steps.bump.outputs.version }}
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Get latest tag
+        id: tag
+        run: |
+          git fetch --tags
+          TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo v0.0.0)
+          echo "tag=$TAG" >> $GITHUB_OUTPUT
+
+      - name: Calculate next version
+        id: bump
+        run: |
+          TAG=${{ steps.tag.outputs.tag }}
+          COMMITS=$(git log $TAG..HEAD --pretty=format:"%s")
+
+          BUMP=""
+
+          for c in $COMMITS; do
+            if [[ "$c" == *"semver-major"* ]]; then
+              BUMP="major"
+              break
+            elif [[ "$c" == *"semver-minor"* ]]; then
+              BUMP="minor"
+            elif [[ "$c" == *"semver-patch"* ]]; then
+              BUMP="patch"
+            fi
+          done
+
+          # If nothing found → DO NOT bump
+          if [ -z "$BUMP" ]; then
+            echo "No semver keyword found → skipping version bump"
+            exit 0
+          fi
+
+          VERSION=${TAG#v}
+          IFS='.' read -r MA MI PA <<< "$VERSION"
+
+          if [ "$BUMP" == "major" ]; then
+            MA=$((MA+1)); MI=0; PA=0
+          elif [ "$BUMP" == "minor" ]; then
+            MI=$((MI+1)); PA=0
+          else
+            PA=$((PA+1))
+          fi
+
+          NEW_VERSION="v$MA.$MI.$PA"
+          echo "version=$NEW_VERSION" >> $GITHUB_OUTPUT
+
   build:
     needs: dotnet
     runs-on: ubuntu-24.04
@@ -27,11 +84,58 @@ jobs:
       - name: Docker build
         run: docker build -t $IMAGE:${{ github.sha }} .
 
+      - name: Tag images
+        run: |
+          # always tag SHA
+          docker tag $IMAGE:${{ github.sha }} $IMAGE:${{ github.sha }}
+
+          # staging tag
+          if [ "${{ github.ref }}" == "refs/heads/staging" ]; then
+            docker tag $IMAGE:${{ github.sha }} $IMAGE:staging
+          fi
+
+          # main tags
+          if [ "${{ github.ref }}" == "refs/heads/main" ]; then
+            docker tag $IMAGE:${{ github.sha }} $IMAGE:latest
+
+            if [ -n "${{ needs.version.outputs.version }}" ]; then
+              docker tag $IMAGE:${{ github.sha }} $IMAGE:${{ needs.version.outputs.version }}
+            fi
+          fi
+
       - name: Login GHCR
         run: echo ${{ secrets.GITHUB_TOKEN }} | docker login ghcr.io -u ${{ github.actor }} --password-stdin
 
       - name: Push image
-        run: docker push $IMAGE:${{ github.sha }}
+        run: |
+          docker push $IMAGE:${{ github.sha }}
+
+          if [ "${{ github.ref }}" == "refs/heads/staging" ]; then
+            docker push $IMAGE:staging
+          fi
+
+          if [ "${{ github.ref }}" == "refs/heads/main" ]; then
+            docker push $IMAGE:latest
+
+            if [ -n "${{ needs.version.outputs.version }}" ]; then
+              docker push $IMAGE:${{ needs.version.outputs.version }}
+            fi
+          fi
+
+  tag:
+    needs: version
+    runs-on: ubuntu-24.04
+    if: github.ref == 'refs/heads/main' && needs.version.outputs.version != ''
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Create Git tag
+        run: |
+          git config user.name "github-actions"
+          git config user.email "github-actions@github.com"
+          git tag ${{ needs.version.outputs.version }}
+          git push origin ${{ needs.version.outputs.version }}
 
   deploy-staging:
     needs: build
