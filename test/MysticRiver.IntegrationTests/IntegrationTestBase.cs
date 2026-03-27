@@ -1,16 +1,15 @@
 using DotNet.Testcontainers.Containers;
+
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace MysticRiver.IntegrationTests;
 
-public abstract class IntegrationTestBase : IAsyncLifetime
-{
+public abstract class IntegrationTestBase : IAsyncLifetime {
     private TestCtx TestContext { get; set; } = null!;
     private readonly List<IContainer> containers = [];
 
-    public async ValueTask InitializeAsync()
-    {
+    public async ValueTask InitializeAsync() {
         var services = new ServiceCollection();
         var configuration = new ConfigurationManager();
 
@@ -29,10 +28,8 @@ public abstract class IntegrationTestBase : IAsyncLifetime
         await AfterInitializeAsync(TestContext).ConfigureAwait(false);
     }
 
-    public async ValueTask DisposeAsync()
-    {
-        await Task.WhenAll(containers.Select(async c =>
-        {
+    public async ValueTask DisposeAsync() {
+        await Task.WhenAll(containers.Select(async c => {
             await c.StopAsync().ConfigureAwait(false);
             await c.DisposeAsync().ConfigureAwait(false);
         })).ConfigureAwait(false);

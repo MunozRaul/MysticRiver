@@ -1,0 +1,89 @@
+root = true
+
+# All files
+[*]
+charset = utf-8
+end_of_line = crlf
+insert_final_newline = true
+trim_trailing_whitespace = true
+
+# C# files
+[*.cs]
+
+#### Indentation ####
+indent_style = space
+indent_size = 4
+tab_width = 4
+
+#### Braces (same line style) ####
+csharp_new_line_before_open_brace = none
+
+#### Spacing ####
+csharp_space_between_method_call_parameter_list_parentheses = false
+csharp_space_between_method_declaration_parameter_list_parentheses = false
+csharp_space_between_parentheses = false
+csharp_space_after_cast = false
+csharp_space_after_keywords_in_control_flow_statements = true
+
+#### Using directives ####
+dotnet_sort_system_directives_first = true
+dotnet_separate_import_directive_groups = true
+
+#### this. qualification ####
+dotnet_style_qualification_for_field = false:error
+dotnet_style_qualification_for_property = false:error
+dotnet_style_qualification_for_method = false:error
+dotnet_style_qualification_for_event = false:error
+
+#### var preferences ####
+csharp_style_var_for_built_in_types = true:error
+csharp_style_var_when_type_is_apparent = true:error
+csharp_style_var_elsewhere = true:error
+
+#### Expression-bodied members ####
+csharp_style_expression_bodied_constructors = false:error
+csharp_style_expression_bodied_properties = true:error
+
+#### Naming conventions ####
+dotnet_naming_rule.private_fields_should_be_camel_case.severity = error
+dotnet_naming_rule.private_fields_should_be_camel_case.symbols = private_fields
+dotnet_naming_rule.private_fields_should_be_camel_case.style = camel_case_style
+
+dotnet_naming_symbols.private_fields.applicable_kinds = field
+dotnet_naming_symbols.private_fields.applicable_accessibilities = private
+
+dotnet_naming_style.camel_case_style.capitalization = camel_case
+
+# Make class sealed if possible
+dotnet_diagnostic.CA1852.severity = error
+
+# Make types internal if possible (reduce visibility)
+dotnet_diagnostic.CA1515.severity = suggestion
+
+# filescoped namespaces
+csharp_style_namespace_declarations = file_scoped:error
+
+#### Preferences ####
+csharp_prefer_braces = true:error
+csharp_prefer_simple_using_statement = true:error
+
+#### YAML files ####
+[*.{yml,yaml}]
+indent_style = space
+indent_size = 2
+tab_width = 2
+end_of_line = lf
+insert_final_newline = true
+trim_trailing_whitespace = true
+
+#### XML files (including .csproj, .props, etc.) ####
+[*.{xml,csproj,props,targets,config,resx}]
+indent_style = space
+indent_size = 2
+tab_width = 2
+end_of_line = crlf
+insert_final_newline = true
+trim_trailing_whitespace = true
+
+[*.csproj]
+insert_final_newline = true
