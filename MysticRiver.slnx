@@ -1,10 +1,10 @@
 <Solution>
   <Folder Name="/Backend/">
-    <Project Path="MysticRiver.Contracts/MysticRiver.Contracts.csproj" Id="fee8b294-7c1d-4e74-b098-6c28a5baf656" />
-    <Project Path="MysticRiver.HttpApi/MysticRiver.HttpApi.csproj" Id="0e55b68d-ec72-4110-96d1-7dddef9bf012" />
+    <Project Path="src/MysticRiver.Contracts/MysticRiver.Contracts.csproj" Id="fee8b294-7c1d-4e74-b098-6c28a5baf656" />
+    <Project Path="src/MysticRiver.HttpApi/MysticRiver.HttpApi.csproj" Id="0e55b68d-ec72-4110-96d1-7dddef9bf012" />
   </Folder>
   <Folder Name="/Frontend/">
-    <Project Path="MysticRiver.Client/MysticRiver.Client.csproj" Id="6afa2f12-323f-4f9d-b401-04e57fc444b0" />
+    <Project Path="src/MysticRiver.Client/MysticRiver.Client.csproj" Id="6afa2f12-323f-4f9d-b401-04e57fc444b0" />
   </Folder>
   <Folder Name="/k8s/">
   </Folder>
