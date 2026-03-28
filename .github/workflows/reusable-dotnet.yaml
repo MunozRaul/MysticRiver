@@ -27,9 +27,9 @@ jobs:
             printf "$l"
           done
 
-          printf "major: ${{ env.CONTAINS_MAJOR }}\n"
-          printf "minor: ${{ env.CONTAINS_MINOR }}\n"
-          printf "patch: ${{ env.CONTAINS_PATCH }}\n"
+          echo "major: ${{ env.CONTAINS_MAJOR }}\n"
+          echo "minor: ${{ env.CONTAINS_MINOR }}\n"
+          echo "patch: ${{ env.CONTAINS_PATCH }}\n"
           
       
       - name: .NET Restore
