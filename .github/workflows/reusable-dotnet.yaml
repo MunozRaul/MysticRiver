@@ -19,7 +19,10 @@ jobs:
       - name: Print labels
         run: |
           LABELS="${{ toJson(github.event.pull_request.labels.*.name) }}"
-          printf "$LABELS"
+          for l in "$LABELS"; do
+            printf "$l"
+          done
+          
       
       - name: .NET Restore
         run: dotnet restore src/MysticRiver.HttpApi/MysticRiver.HttpApi.csproj
