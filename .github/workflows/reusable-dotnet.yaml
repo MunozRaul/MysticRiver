@@ -17,19 +17,19 @@ jobs:
 
       # temporary to check if we can actually read the labels
       - name: Print labels
+        env:
+          PR_LABELS: ${{ toJson(github.event.pull_request.labels.*.name) }}
+          CONTAINS_MAJOR: ${{ contains($PR_LABELS, "major") }}
+          CONTAINS_MINOR: ${{ contains($PR_LABELS, "minor") }}
+          CONTAINS_PATCH: ${{ contains($PR_LABELS, "patch") }}
         run: |
-          LABELS="${{ toJson(github.event.pull_request.labels.*.name) }}"
-          MAJOR_LABEL="${{ toJson(github.event.pull_request.labels.major.name) }}"
-          MINOR_LABEL="${{ toJson(github.event.pull_request.labels.minor.name) }}"
-          PATCH_LABEL="${{ toJson(github.event.pull_request.labels.patch.name) }}"
-
-          for l in "$LABELS"; do
+          for l in "$PR_LABELS"; do
             printf "$l"
           done
 
-          printf "major: ${{ contains($LABELS, "major") }}\n"
-          printf "minor: ${{ contains($LABELS, "minor") }}\n"
-          printf "patch: ${{ contains($LABELS, "patch") }}\n"
+          printf "major: $CONTAINS_MAJOR\n"
+          printf "minor: $CONTAINS_MINOR\n"
+          printf "patch: $CONTAINS_PATCH\n"
           
       
       - name: .NET Restore
