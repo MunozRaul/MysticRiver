@@ -27,11 +27,11 @@ jobs:
           VERSION=${TAG#v}
           IFS='.' read -r MA MI PA <<< "$VERSION"
 
-          if [[ ${{ env.CONTAINS_MAJOR }} ]]; then
+          if [[ ${{ env.CONTAINS_MAJOR }} == "true" ]]; then
             MA=$((MA+1)); MI=0; PA=0
-          elif [[ ${{ env.CONTAINS_MINOR }} ]]; then
+          elif [[ ${{ env.CONTAINS_MINOR }} == "true" ]]; then
             MI=$((MI+1)); PA=0
-          elif [[ ${{ env.CONTAINS_PATCH }} ]]; then
+          elif [[ ${{ env.CONTAINS_PATCH }} == "true" ]]; then
             PA=$((PA+1))
           else
             echo "no new version, exiting..."
