@@ -19,17 +19,17 @@ jobs:
       - name: Print labels
         env:
           PR_LABELS: ${{ toJson(github.event.pull_request.labels.*.name) }}
-          CONTAINS_MAJOR: ${{ contains($PR_LABELS, "major") }}
-          CONTAINS_MINOR: ${{ contains($PR_LABELS, "minor") }}
-          CONTAINS_PATCH: ${{ contains($PR_LABELS, "patch") }}
+          CONTAINS_MAJOR: ${{ contains(${{ env.PR_LABELS }}, "major") }}
+          CONTAINS_MINOR: ${{ contains(${{ env.PR_LABELS }}, "minor") }}
+          CONTAINS_PATCH: ${{ contains(${{ env.PR_LABELS }}, "patch") }}
         run: |
           for l in "$PR_LABELS"; do
             printf "$l"
           done
 
-          printf "major: $CONTAINS_MAJOR\n"
-          printf "minor: $CONTAINS_MINOR\n"
-          printf "patch: $CONTAINS_PATCH\n"
+          printf "major: ${{ env.CONTAINS_MAJOR }}\n"
+          printf "minor: ${{ env.CONTAINS_MINOR }}\n"
+          printf "patch: ${{ env.CONTAINS_PATCH }}\n"
           
       
       - name: .NET Restore
