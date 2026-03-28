@@ -24,12 +24,8 @@ jobs:
         run: |
           git fetch --tags
           TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo v0.0.0)
-          echo "tag=$TAG" >> $GITHUB_OUTPUT
-          TAG=${{ steps.tag.outputs.tag }}
-          COMMITS=$(git log $TAG..HEAD --pretty=format:"%s")
-          VERSION="v$TAG"
-          IFS='.' read -r MA MI PA <<< "$VERSION"
-          echo "Current version: $VERSION"
+          IFS='.' read -r MA MI PA <<< "$TAG"
+          echo "Current tag: $TAG"
 
           if [[ ${{ env.CONTAINS_MAJOR }} == "true" ]]; then
             MA=$((MA+1)); MI=0; PA=0
@@ -42,8 +38,8 @@ jobs:
             exit 0
           fi
 
-          NEW_VERSION="v$MA.$MI.$PA"
-          echo "version=$NEW_VERSION"
+          NEW_TAG="v$MA.$MI.$PA"
+          echo "version=$NEW_TAG"
       
       - name: .NET Restore
         run: dotnet restore src/MysticRiver.HttpApi/MysticRiver.HttpApi.csproj
