@@ -25,37 +25,30 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Get latest tag
-        id: tag
-        run: |
-          git fetch --tags
-          TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo v0.0.0)
-          echo "tag=$TAG" >> $GITHUB_OUTPUT
-
-      - name: Calculate next version
-        id: bump
+      - name: Check version computation
         env:
           CONTAINS_MAJOR: ${{ contains(github.event.pull_request.labels.*.name, 'major') }}
           CONTAINS_MINOR: ${{ contains(github.event.pull_request.labels.*.name, 'minor') }}
           CONTAINS_PATCH: ${{ contains(github.event.pull_request.labels.*.name, 'patch') }}
         run: |
-          TAG=${{ steps.tag.outputs.tag }}
-          COMMITS=$(git log $TAG..HEAD --pretty=format:"%s")
-          VERSION=${TAG#v}
-          IFS='.' read -r MA MI PA <<< "$VERSION"
+          git fetch --tags
+          TAG=$(git tag --sort=-v:refname | head -n 1 || echo v0.0.0)
+          VERSION="$TAG"
+          IFS='.' read -r MA MI PA <<< "${VERSION:1}" # skip first 'v' char
+          echo "Current tag: $VERSION"
 
-          if [[ ${{ env.CONTAINS_MAJOR }} ]]; then
+          if [[ ${{ env.CONTAINS_MAJOR }} == "true" ]]; then
             MA=$((MA+1)); MI=0; PA=0
-          elif [[ ${{ env.CONTAINS_MINOR }} ]]; then
+          elif [[ ${{ env.CONTAINS_MINOR }} == "true" ]]; then
             MI=$((MI+1)); PA=0
-          elif [[ ${{ env.CONTAINS_PATCH }} ]]; then
+          elif [[ ${{ env.CONTAINS_PATCH }} == "true" ]]; then
             PA=$((PA+1))
           else
             echo "no new version, exiting..."
             exit 0
           fi
 
-          NEW_VERSION="v$MA.$MI.$PA"
+          NEW_TAG="v$MA.$MI.$PA"
           echo "version=$NEW_VERSION" >> $GITHUB_OUTPUT
 
   build:
