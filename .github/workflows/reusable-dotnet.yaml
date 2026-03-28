@@ -22,6 +22,9 @@ jobs:
           CONTAINS_MINOR: ${{ contains(github.event.pull_request.labels.*.name, 'minor') }}
           CONTAINS_PATCH: ${{ contains(github.event.pull_request.labels.*.name, 'patch') }}
         run: |
+          git fetch --tags
+          TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo v0.0.0)
+          echo "tag=$TAG" >> $GITHUB_OUTPUT
           TAG=${{ steps.tag.outputs.tag }}
           COMMITS=$(git log $TAG..HEAD --pretty=format:"%s")
           VERSION="v$TAG"
