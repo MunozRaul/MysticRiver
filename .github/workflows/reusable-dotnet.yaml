@@ -19,9 +19,9 @@ jobs:
       - name: Print labels
         run: |
           LABELS="${{ toJson(github.event.pull_request.labels.*.name) }}"
-          MAJOR_LABEL="${{ github.event.pull_request.labels.major.name }}"
-          MINOR_LABEL="${{ github.event.pull_request.labels.minor.name }}"
-          PATCH_LABEL="${{ github.event.pull_request.labels.patch.name }}"
+          MAJOR_LABEL="${{ toJson(github.event.pull_request.labels.major.name) }}"
+          MINOR_LABEL="${{ toJson(github.event.pull_request.labels.minor.name) }}"
+          PATCH_LABEL="${{ toJson(github.event.pull_request.labels.patch.name) }}"
 
           for l in "$LABELS"; do
             printf "$l"
