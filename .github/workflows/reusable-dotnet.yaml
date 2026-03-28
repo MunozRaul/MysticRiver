@@ -24,7 +24,7 @@ jobs:
         run: |
           TAG=${{ steps.tag.outputs.tag }}
           COMMITS=$(git log $TAG..HEAD --pretty=format:"%s")
-          VERSION=${v$TAG}
+          VERSION="v$TAG"
           IFS='.' read -r MA MI PA <<< "$VERSION"
           echo "Current version: $VERSION"
 
