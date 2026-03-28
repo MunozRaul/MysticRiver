@@ -18,10 +18,8 @@ jobs:
       # temporary to check if we can actually read the labels
       - name: Print labels
         run: |
-          LABELS="${{ github.event.pull_request.labels.*.name }}"
-          for l in $LABELS; do
-            echo "$l"
-          done
+          LABELS="${{ toJson(github.event.pull_request.labels.*.name) }}"
+          printf "$LABELS"
       
       - name: .NET Restore
         run: dotnet restore src/MysticRiver.HttpApi/MysticRiver.HttpApi.csproj
