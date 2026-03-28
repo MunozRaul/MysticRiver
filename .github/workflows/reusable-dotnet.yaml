@@ -24,8 +24,9 @@ jobs:
         run: |
           TAG=${{ steps.tag.outputs.tag }}
           COMMITS=$(git log $TAG..HEAD --pretty=format:"%s")
-          VERSION=${TAG#v}
+          VERSION=${v$TAG}
           IFS='.' read -r MA MI PA <<< "$VERSION"
+          echo "Current version: $VERSION"
 
           if [[ ${{ env.CONTAINS_MAJOR }} == "true" ]]; then
             MA=$((MA+1)); MI=0; PA=0
