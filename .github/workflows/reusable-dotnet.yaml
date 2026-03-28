@@ -25,7 +25,7 @@ jobs:
           git fetch --tags
           TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo v0.0.0)
           VERSION="$TAG"
-          IFS='.' read -r MA MI PA <<< "$VERSION"
+          IFS='.' read -r MA MI PA <<< "${VERSION:1}" # skip first 'v' char
           echo "Current tag: $VERSION"
 
           if [[ ${{ env.CONTAINS_MAJOR }} == "true" ]]; then
