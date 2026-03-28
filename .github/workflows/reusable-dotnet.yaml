@@ -27,9 +27,9 @@ jobs:
             printf "$l"
           done
 
-          printf "major: $MAJOR_LABEL"
-          printf "minor: $MINOR_LABEL"
-          printf "patch: $PATCH_LABEL"
+          printf "major: ${{ contains($LABELS, "major") }}\n"
+          printf "minor: ${{ contains($LABELS, "minor") }}\n"
+          printf "patch: ${{ contains($LABELS, "patch") }}\n"
           
       
       - name: .NET Restore
