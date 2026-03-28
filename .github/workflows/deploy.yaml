@@ -84,6 +84,14 @@ jobs:
       - name: Docker build
         run: docker build -t $IMAGE:${{ github.sha }} .
 
+      # temporary to check if we can actually read the labels
+      - name: Print labels
+        run: |
+          LABELS="${{ github.event.pull_request.labels.*.name }}"
+          for l in $LABELS; do
+            echo "$l"
+          done
+      
       - name: Tag images
         run: |
           # always tag SHA
