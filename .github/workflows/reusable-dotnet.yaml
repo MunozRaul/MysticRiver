@@ -16,17 +16,30 @@ jobs:
           dotnet-version: ${{ inputs.dotnet-version }}
 
       # temporary to check if we can actually read the labels
-      - name: Print labels
+      - name: Check version computation
         env:
-          PR_LABELS: ${{ toJson(github.event.pull_request.labels.*.name) }}
           CONTAINS_MAJOR: ${{ contains(github.event.pull_request.labels.*.name, 'major') }}
           CONTAINS_MINOR: ${{ contains(github.event.pull_request.labels.*.name, 'minor') }}
           CONTAINS_PATCH: ${{ contains(github.event.pull_request.labels.*.name, 'patch') }}
         run: |
-          echo ${{ env.CONTAINS_MAJOR }}
-          echo ${{ env.CONTAINS_MINOR }}
-          echo ${{ env.CONTAINS_PATCH }}
-          
+          TAG=${{ steps.tag.outputs.tag }}
+          COMMITS=$(git log $TAG..HEAD --pretty=format:"%s")
+          VERSION=${TAG#v}
+          IFS='.' read -r MA MI PA <<< "$VERSION"
+
+          if [[ ${{ env.CONTAINS_MAJOR }} ]]; then
+            MA=$((MA+1)); MI=0; PA=0
+          elif [[ ${{ env.CONTAINS_MINOR }} ]]; then
+            MI=$((MI+1)); PA=0
+          elif [[ ${{ env.CONTAINS_PATCH }} ]]; then
+            PA=$((PA+1))
+          else
+            echo "no new version, exiting..."
+            exit 0
+          fi
+
+          NEW_VERSION="v$MA.$MI.$PA"
+          echo "version=$NEW_VERSION"
       
       - name: .NET Restore
         run: dotnet restore src/MysticRiver.HttpApi/MysticRiver.HttpApi.csproj

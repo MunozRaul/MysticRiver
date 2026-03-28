@@ -34,38 +34,25 @@ jobs:
 
       - name: Calculate next version
         id: bump
+        env:
+          CONTAINS_MAJOR: ${{ contains(github.event.pull_request.labels.*.name, 'major') }}
+          CONTAINS_MINOR: ${{ contains(github.event.pull_request.labels.*.name, 'minor') }}
+          CONTAINS_PATCH: ${{ contains(github.event.pull_request.labels.*.name, 'patch') }}
         run: |
           TAG=${{ steps.tag.outputs.tag }}
           COMMITS=$(git log $TAG..HEAD --pretty=format:"%s")
-
-          BUMP=""
-          MAJOR_LABEL="${{ github.event.pull_request.labels.major.name }}"
-          MINOR_LABEL="${{ github.event.pull_request.labels.minor.name }}"
-          PATCH_LABEL="${{ github.event.pull_request.labels.patch.name }}"
-
-          if [[ -n "$MAJOR" ]]; then
-            BUMP="major"
-          elif [[ -n "$MINOR" ]]; then
-            BUMP="minor"
-          elif [[ -n "$PATCH" ]]; then
-            BUMP="patch"
-          fi
-          
-          # If nothing found → DO NOT bump
-          if [ -z "$BUMP" ]; then
-            echo "No semver keyword found → skipping version bump"
-            exit 0
-          fi
-
           VERSION=${TAG#v}
           IFS='.' read -r MA MI PA <<< "$VERSION"
 
-          if [ "$BUMP" == "major" ]; then
+          if [[ ${{ env.CONTAINS_MAJOR }} ]]; then
             MA=$((MA+1)); MI=0; PA=0
-          elif [ "$BUMP" == "minor" ]; then
+          elif [[ ${{ env.CONTAINS_MINOR }} ]]; then
             MI=$((MI+1)); PA=0
-          else
+          elif [[ ${{ env.CONTAINS_PATCH }} ]]; then
             PA=$((PA+1))
+          else
+            echo "no new version, exiting..."
+            exit 0
           fi
 
           NEW_VERSION="v$MA.$MI.$PA"
