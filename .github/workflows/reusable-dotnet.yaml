@@ -19,9 +19,9 @@ jobs:
       - name: Print labels
         env:
           PR_LABELS: ${{ toJson(github.event.pull_request.labels.*.name) }}
-          CONTAINS_MAJOR: ${{ contains(github.event.pull_request.labels.*.name, "major") }}
-          CONTAINS_MINOR: ${{ contains(github.event.pull_request.labels.*.name, "minor") }}
-          CONTAINS_PATCH: ${{ contains(github.event.pull_request.labels.*.name, "patch") }}
+          CONTAINS_MAJOR: ${{ contains(github.event.pull_request.labels.*.name, 'major') }}
+          CONTAINS_MINOR: ${{ contains(github.event.pull_request.labels.*.name, 'minor') }}
+          CONTAINS_PATCH: ${{ contains(github.event.pull_request.labels.*.name, 'patch') }}
         run: |
           echo ${{ env.CONTAINS_MAJOR }}
           echo ${{ env.CONTAINS_MINOR }}
