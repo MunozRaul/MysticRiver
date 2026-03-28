@@ -39,18 +39,18 @@ jobs:
           COMMITS=$(git log $TAG..HEAD --pretty=format:"%s")
 
           BUMP=""
+          MAJOR_LABEL="${{ github.event.pull_request.labels.major.name }}"
+          MINOR_LABEL="${{ github.event.pull_request.labels.minor.name }}"
+          PATCH_LABEL="${{ github.event.pull_request.labels.patch.name }}"
 
-          for c in $COMMITS; do
-            if [[ "$c" == *"semver-major"* ]]; then
-              BUMP="major"
-              break
-            elif [[ "$c" == *"semver-minor"* ]]; then
-              BUMP="minor"
-            elif [[ "$c" == *"semver-patch"* ]]; then
-              BUMP="patch"
-            fi
-          done
-
+          if [[ -n "$MAJOR" ]]; then
+            BUMP="major"
+          elif [[ -n "$MINOR" ]]; then
+            BUMP="minor"
+          elif [[ -n "$PATCH" ]]; then
+            BUMP="patch"
+          fi
+          
           # If nothing found → DO NOT bump
           if [ -z "$BUMP" ]; then
             echo "No semver keyword found → skipping version bump"
