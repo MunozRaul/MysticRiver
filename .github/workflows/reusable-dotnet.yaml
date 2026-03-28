@@ -19,9 +19,17 @@ jobs:
       - name: Print labels
         run: |
           LABELS="${{ toJson(github.event.pull_request.labels.*.name) }}"
+          MAJOR_LABEL="${{ github.event.pull_request.labels.major.name }}"
+          MINOR_LABEL="${{ github.event.pull_request.labels.minor.name }}"
+          PATCH_LABEL="${{ github.event.pull_request.labels.patch.name }}"
+
           for l in "$LABELS"; do
             printf "$l"
           done
+
+          printf "major: $MAJOR_LABEL"
+          printf "minor: $MINOR_LABEL"
+          printf "patch: $PATCH_LABEL"
           
       
       - name: .NET Restore
