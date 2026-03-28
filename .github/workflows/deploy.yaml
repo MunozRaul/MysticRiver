@@ -34,9 +34,8 @@ jobs:
           git fetch --tags
           TAG=$(git tag --sort=-v:refname | head -n 1 || echo v0.0.0)
           VERSION="$TAG"
-          IFS='.' read -r MA MI PA <<< "${VERSION:1}" # skip first 'v' char
-          echo "Current tag: $VERSION"
 
+          IFS='.' read -r MA MI PA <<< "${VERSION:1}" # skip first 'v' char
           if [[ ${{ env.CONTAINS_MAJOR }} == "true" ]]; then
             MA=$((MA+1)); MI=0; PA=0
           elif [[ ${{ env.CONTAINS_MINOR }} == "true" ]]; then
