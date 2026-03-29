@@ -18,7 +18,7 @@ namespace MysticRiver.Client
             base.OnStartup(e);
 
             var updater = new UpdateService();
-            await updater.CheckForUpdatesAsync();
+            updater.CheckForUpdates();
 
             MainWindow mainWindow = new MainWindow();
             mainWindow.Show();

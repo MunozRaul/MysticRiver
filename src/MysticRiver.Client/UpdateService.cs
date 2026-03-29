@@ -9,7 +9,7 @@ namespace MysticRiver.Client
         private readonly string _repoOwner = "munozraul";
         private readonly string _repoName = "mysticriver";
 
-        public Task CheckForUpdatesAsync()
+        public void CheckForUpdates()
         {
             try
             {
@@ -17,44 +17,6 @@ namespace MysticRiver.Client
 
                 AutoUpdater.HttpUserAgent = "MysticRiver";
                 AutoUpdater.ReportErrors = true;
-
-                void ParseGitHubRelease(ParseUpdateInfoEventArgs args)
-                {
-                    using JsonDocument doc = JsonDocument.Parse(args.RemoteData);
-                    JsonElement root = doc.RootElement;
-
-                    string tagName = root.GetProperty("tag_name").GetString() ?? string.Empty;
-                    string version = tagName.TrimStart('v');
-
-                    string? downloadUrl = null;
-                    foreach (JsonElement asset in root.GetProperty("assets").EnumerateArray())
-                    {
-                        string name = asset.GetProperty("name").GetString() ?? string.Empty;
-                        if (name.Contains("client", StringComparison.OrdinalIgnoreCase) &&
-                            name.EndsWith(".zip", StringComparison.OrdinalIgnoreCase))
-                        {
-                            downloadUrl = asset.GetProperty("browser_download_url").GetString();
-                            break;
-                        }
-                    }
-
-                    if (string.IsNullOrWhiteSpace(version) || string.IsNullOrWhiteSpace(downloadUrl))
-                    {
-                        Debug.WriteLine("Update metadata is missing version or client zip asset.");
-                        return;
-                    }
-
-                    string? changelogUrl = root.TryGetProperty("html_url", out JsonElement htmlUrl)
-                        ? htmlUrl.GetString()
-                        : null;
-
-                    args.UpdateInfo = new UpdateInfoEventArgs
-                    {
-                        CurrentVersion = version,
-                        DownloadURL = downloadUrl,
-                        ChangelogURL = changelogUrl
-                    };
-                }
 
                 AutoUpdater.ParseUpdateInfoEvent += ParseGitHubRelease;
                 try
@@ -70,8 +32,44 @@ namespace MysticRiver.Client
             {
                 Debug.WriteLine($"Update check failed: {ex.Message}");
             }
+        }
 
-            return Task.CompletedTask;
+        private void ParseGitHubRelease(ParseUpdateInfoEventArgs args)
+        {
+            using JsonDocument doc = JsonDocument.Parse(args.RemoteData);
+            JsonElement root = doc.RootElement;
+
+            string tagName = root.GetProperty("tag_name").GetString() ?? string.Empty;
+            string version = tagName.TrimStart('v');
+
+            string? downloadUrl = null;
+            foreach (JsonElement asset in root.GetProperty("assets").EnumerateArray())
+            {
+                string name = asset.GetProperty("name").GetString() ?? string.Empty;
+                if (name.Contains("client", StringComparison.OrdinalIgnoreCase) &&
+                    name.EndsWith(".zip", StringComparison.OrdinalIgnoreCase))
+                {
+                    downloadUrl = asset.GetProperty("browser_download_url").GetString();
+                    break;
+                }
+            }
+
+            if (string.IsNullOrWhiteSpace(version) || string.IsNullOrWhiteSpace(downloadUrl))
+            {
+                Debug.WriteLine("Update metadata is missing version or client zip asset.");
+                return;
+            }
+
+            string? changelogUrl = root.TryGetProperty("html_url", out JsonElement htmlUrl)
+                ? htmlUrl.GetString()
+                : null;
+
+            args.UpdateInfo = new UpdateInfoEventArgs
+            {
+                CurrentVersion = version,
+                DownloadURL = downloadUrl,
+                ChangelogURL = changelogUrl
+            };
         }
     }
 }
