@@ -1,27 +1,42 @@
-﻿using AutoUpdaterDotNET;
-using System.Configuration;
-using System.Data;
-using System.Diagnostics;
-using System.Net.Http;
-using System.Text.Json;
+﻿using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 using System.Windows;
 
 namespace MysticRiver.Client
 {
-    /// <summary>
-    /// Interaction logic for App.xaml
-    /// </summary>
     public partial class App : Application
     {
+        private readonly IHost _host;
+
+        public App()
+        {
+            _host = Host.CreateDefaultBuilder()
+                .ConfigureServices(services =>
+                {
+                    services.AddSingleton<UpdateService>();
+                    services.AddSingleton<MainWindow>();
+                })
+                .Build();
+        }
+
         protected override async void OnStartup(StartupEventArgs e)
         {
             base.OnStartup(e);
 
-            var updater = new UpdateService();
+            await _host.StartAsync();
+
+            var updater = _host.Services.GetRequiredService<UpdateService>();
             updater.CheckForUpdates();
 
-            MainWindow mainWindow = new MainWindow();
+            var mainWindow = _host.Services.GetRequiredService<MainWindow>();
             mainWindow.Show();
+        }
+
+        protected override async void OnExit(ExitEventArgs e)
+        {
+            await _host.StopAsync();
+            _host.Dispose();
+            base.OnExit(e);
         }
     }
 }
