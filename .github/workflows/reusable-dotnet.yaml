@@ -34,32 +34,6 @@ jobs:
           done
           exit $failed
 
-      - name: version computation
-        id: bump
-        env:
-          CONTAINS_MAJOR: ${{ contains(github.event.pull_request.labels.*.name, 'major') }}
-          CONTAINS_MINOR: ${{ contains(github.event.pull_request.labels.*.name, 'minor') }}
-          CONTAINS_PATCH: ${{ contains(github.event.pull_request.labels.*.name, 'patch') }}
-        run: |
-          git fetch --tags
-          TAG=$(git tag --sort=-v:refname | head -n 1 || echo v0.0.0)
-          VERSION="$TAG"
-
-          IFS='.' read -r MA MI PA <<< "${VERSION:1}" # skip first 'v' char
-          if [[ ${{ env.CONTAINS_MAJOR }} == "true" ]]; then
-            MA=$((MA+1)); MI=0; PA=0
-          elif [[ ${{ env.CONTAINS_MINOR }} == "true" ]]; then
-            MI=$((MI+1)); PA=0
-          elif [[ ${{ env.CONTAINS_PATCH }} == "true" ]]; then
-            PA=$((PA+1))
-          else
-            echo "no new version, exiting..."
-            exit 0
-          fi
-
-          NEW_TAG="v$MA.$MI.$PA"
-          echo "version=$NEW_TAG"
-
       - name: Upload test artifacts
         if: failure()
         uses: actions/upload-artifact@v4
