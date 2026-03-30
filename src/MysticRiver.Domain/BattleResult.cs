@@ -7,6 +7,8 @@ public class BattleResult
 
     public BattleResult(Creature winner, Creature loser)
     {
+        ArgumentNullException.ThrowIfNull(winner);
+        ArgumentNullException.ThrowIfNull(loser);
         Winner = winner;
         Loser = loser;
     }
