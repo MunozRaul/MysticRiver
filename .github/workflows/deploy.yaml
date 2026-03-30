@@ -25,7 +25,8 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Check version computation
+      - name: version computation
+        id: bump
         env:
           CONTAINS_MAJOR: ${{ contains(github.event.pull_request.labels.*.name, 'major') }}
           CONTAINS_MINOR: ${{ contains(github.event.pull_request.labels.*.name, 'minor') }}
@@ -48,7 +49,7 @@ jobs:
           fi
 
           NEW_TAG="v$MA.$MI.$PA"
-          echo "version=$NEW_VERSION" >> $GITHUB_OUTPUT
+          echo "version=$NEW_TAG" >> $GITHUB_OUTPUT
 
   build:
     needs: dotnet
@@ -62,7 +63,7 @@ jobs:
 
       - name: Docker build
         run: docker build -t $IMAGE:${{ github.sha }} .
-      
+
       - name: Tag images
         run: |
           # always tag SHA
