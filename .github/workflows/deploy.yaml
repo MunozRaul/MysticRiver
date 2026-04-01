@@ -25,31 +25,51 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: version computation
-        id: bump
-        env:
-          CONTAINS_MAJOR: ${{ contains(github.event.pull_request.labels.*.name, 'major') }}
-          CONTAINS_MINOR: ${{ contains(github.event.pull_request.labels.*.name, 'minor') }}
-          CONTAINS_PATCH: ${{ contains(github.event.pull_request.labels.*.name, 'patch') }}
+      - name: Get latest tag
+        id: tag
         run: |
           git fetch --tags
-          TAG=$(git tag --sort=-v:refname | head -n 1 || echo v0.0.0)
-          VERSION="$TAG"
+          TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo v0.0.0)
+          echo "tag=$TAG" >> $GITHUB_OUTPUT
 
-          IFS='.' read -r MA MI PA <<< "${VERSION:1}" # skip first 'v' char
-          if [[ ${{ env.CONTAINS_MAJOR }} == "true" ]]; then
-            MA=$((MA+1)); MI=0; PA=0
-          elif [[ ${{ env.CONTAINS_MINOR }} == "true" ]]; then
-            MI=$((MI+1)); PA=0
-          elif [[ ${{ env.CONTAINS_PATCH }} == "true" ]]; then
-            PA=$((PA+1))
-          else
-            echo "no new version, exiting..."
+      - name: Calculate next version
+        id: bump
+        run: |
+          TAG=${{ steps.tag.outputs.tag }}
+          COMMITS=$(git log $TAG..HEAD --pretty=format:"%s")
+
+          BUMP=""
+
+          for c in $COMMITS; do
+            if [[ "$c" == *"semver-major"* ]]; then
+              BUMP="major"
+              break
+            elif [[ "$c" == *"semver-minor"* ]]; then
+              BUMP="minor"
+            elif [[ "$c" == *"semver-patch"* ]]; then
+              BUMP="patch"
+            fi
+          done
+
+          # If nothing found → DO NOT bump
+          if [ -z "$BUMP" ]; then
+            echo "No semver keyword found → skipping version bump"
             exit 0
           fi
 
-          NEW_TAG="v$MA.$MI.$PA"
-          echo "version=$NEW_TAG" >> $GITHUB_OUTPUT
+          VERSION=${TAG#v}
+          IFS='.' read -r MA MI PA <<< "$VERSION"
+
+          if [ "$BUMP" == "major" ]; then
+            MA=$((MA+1)); MI=0; PA=0
+          elif [ "$BUMP" == "minor" ]; then
+            MI=$((MI+1)); PA=0
+          else
+            PA=$((PA+1))
+          fi
+
+          NEW_VERSION="v$MA.$MI.$PA"
+          echo "version=$NEW_VERSION" >> $GITHUB_OUTPUT
 
   build:
     needs: dotnet
