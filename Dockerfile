@@ -3,8 +3,8 @@ WORKDIR /src
 
 COPY . .
 
-RUN dotnet restore MysticRiver.HttpApi/MysticRiver.HttpApi.csproj
-RUN dotnet publish MysticRiver.HttpApi/MysticRiver.HttpApi.csproj -c Release -o /app
+RUN dotnet restore src/MysticRiver.ClientMysticRiver.HttpApi/MysticRiver.HttpApi.csproj
+RUN dotnet publish src/MysticRiver.HttpApi/MysticRiver.HttpApi.csproj -c Release -o /app
 
 FROM mcr.microsoft.com/dotnet/aspnet:10.0
 WORKDIR /app
