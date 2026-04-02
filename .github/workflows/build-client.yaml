@@ -3,7 +3,7 @@ name: Build WPF Client
 on:
   push:
     tags:
-      - 'v*'
+      - '*.*.*'
 
 jobs:
   build-client:
@@ -18,7 +18,7 @@ jobs:
       - name: Set version
         shell: pwsh
         run: |
-          $version = $env:GITHUB_REF_NAME.TrimStart('v')
+          $version = $env:GITHUB_REF_NAME
           "VERSION=$version" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
           "ASSEMBLY_VERSION=$version.0" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
 

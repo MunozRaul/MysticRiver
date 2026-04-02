@@ -40,7 +40,7 @@ namespace MysticRiver.Client
             JsonElement root = doc.RootElement;
 
             string tagName = root.GetProperty("tag_name").GetString() ?? string.Empty;
-            string version = tagName.TrimStart('v');
+            string version = tagName;
 
             string? downloadUrl = null;
             foreach (JsonElement asset in root.GetProperty("assets").EnumerateArray())
