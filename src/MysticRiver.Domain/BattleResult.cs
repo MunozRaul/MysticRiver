@@ -1,6 +1,6 @@
 namespace MysticRiver.Domain;
 
-public class BattleResult
+public sealed class BattleResult
 {
     public Creature Winner { get; }
     public Creature Loser { get; }

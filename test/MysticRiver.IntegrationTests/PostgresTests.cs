@@ -5,7 +5,7 @@ using Testcontainers.PostgreSql;
 
 namespace MysticRiver.IntegrationTests;
 
-public class PostgresTests : IntegrationTestBase
+public sealed class PostgresTests : IntegrationTestBase
 {
     private PostgreSqlContainer postgreSql = null!;
 

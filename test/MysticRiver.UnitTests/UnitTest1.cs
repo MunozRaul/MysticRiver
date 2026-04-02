@@ -1,6 +1,6 @@
 namespace MysticRiver.UnitTests;
 
-public class UnitTest1
+public sealed class UnitTest1
 {
     [Fact]
     public void Test1()

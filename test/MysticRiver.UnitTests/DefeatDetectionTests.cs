@@ -2,7 +2,7 @@ using MysticRiver.Domain;
 
 namespace MysticRiver.UnitTests;
 
-public class CreatureTests
+public sealed class CreatureTests
 {
     [Fact]
     public void IsDead_WhenHpAboveZero_ReturnsFalse()
@@ -44,7 +44,7 @@ public class CreatureTests
     }
 }
 
-public class BattleTests
+public sealed class BattleTests
 {
     private static (Battle battle, Creature p1, Creature p2) CreateBattle(int hp1 = 100, int hp2 = 100)
     {
