@@ -30,6 +30,7 @@
     <File Path=".github/workflows/deploy-postgres.yaml" />
     <File Path=".github/workflows/deploy.yaml" />
     <File Path=".github/workflows/reusable-dotnet.yaml" />
+    <File Path="Directory.Packages.props" />
     <File Path="Dockerfile" />
   </Folder>
   <Folder Name="/test/">

@@ -33,10 +33,10 @@ jobs:
           CONTAINS_PATCH: ${{ contains(github.event.pull_request.labels.*.name, 'patch') }}
         run: |
           git fetch --tags
-          TAG=$(git tag --sort=-v:refname | head -n 1 || echo v0.0.0)
+          TAG=$(git tag --sort=-v:refname | head -n 1 || echo 0.0.0)
           VERSION="$TAG"
 
-          IFS='.' read -r MA MI PA <<< "${VERSION:1}" # skip first 'v' char
+          IFS='.' read -r MA MI PA <<< "$VERSION"
           if [[ ${{ env.CONTAINS_MAJOR }} == "true" ]]; then
             MA=$((MA+1)); MI=0; PA=0
           elif [[ ${{ env.CONTAINS_MINOR }} == "true" ]]; then
@@ -48,7 +48,7 @@ jobs:
             exit 0
           fi
 
-          NEW_TAG="v$MA.$MI.$PA"
+          NEW_TAG="$MA.$MI.$PA"
           echo "version=$NEW_TAG" >> $GITHUB_OUTPUT
 
   build:
