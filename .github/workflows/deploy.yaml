@@ -27,6 +27,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
+          ref: ${{ github.event.pull_request.merge_commit_sha }}
 
       - name: version computation
         id: bump
@@ -114,8 +115,15 @@ jobs:
         env:
           VERSION: ${{ needs.version.outputs.version }}
           GH_PAT: ${{ secrets.GH_PAT }}
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          MERGE_SHA: ${{ github.event.pull_request.merge_commit_sha }}
         run: |
+          if [ -z "$MERGE_SHA" ]; then
+            echo "Missing merge commit SHA from pull request event."
+            exit 1
+          fi
+
+          git checkout "$MERGE_SHA"
+
           if git rev-parse "$VERSION" >/dev/null 2>&1; then
             echo "Tag $VERSION already exists locally."
           else
@@ -128,14 +136,14 @@ jobs:
 
           git config user.name "github-actions"
           git config user.email "github-actions@github.com"
-          git tag "$VERSION"
+          git tag -a "$VERSION" -m "Release $VERSION" "$MERGE_SHA"
 
-          TOKEN="$GH_PAT"
-          if [ -z "$TOKEN" ]; then
-            TOKEN="$GH_TOKEN"
+          if [ -z "$GH_PAT" ]; then
+            echo "GH_PAT secret is required to push tags that trigger other workflows."
+            exit 1
           fi
 
-          git push "https://x-access-token:${TOKEN}@github.com/${{ github.repository }}.git" "$VERSION"
+          git push "https://x-access-token:${GH_PAT}@github.com/${{ github.repository }}.git" "refs/tags/$VERSION"
 
   deploy-staging:
     needs: build
