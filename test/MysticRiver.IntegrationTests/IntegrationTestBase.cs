@@ -7,13 +7,13 @@ namespace MysticRiver.IntegrationTests;
 
 public abstract class IntegrationTestBase : IAsyncLifetime {
     private TestCtx TestContext { get; set; } = null!;
-    private readonly List<IContainer> containers = [];
+    private readonly List<IContainer> _containers = [];
 
     public async ValueTask InitializeAsync() {
         var services = new ServiceCollection();
         var configuration = new ConfigurationManager();
 
-        services.AddKeyedSingleton(DependenyInjection.ContainerGroupKey, containers);
+        services.AddKeyedSingleton(DependenyInjection.ContainerGroupKey, _containers);
         await OnInitializeAsync(services, configuration).ConfigureAwait(false);
 
         TestContext = new TestCtx(
@@ -21,7 +21,7 @@ public abstract class IntegrationTestBase : IAsyncLifetime {
             configuration
         );
 
-        await Task.WhenAll(containers.Select(async c =>
+        await Task.WhenAll(_containers.Select(async c =>
             await c.StartAsync().ConfigureAwait(false))
         ).ConfigureAwait(false);
 
@@ -29,7 +29,7 @@ public abstract class IntegrationTestBase : IAsyncLifetime {
     }
 
     public async ValueTask DisposeAsync() {
-        await Task.WhenAll(containers.Select(async c => {
+        await Task.WhenAll(_containers.Select(async c => {
             await c.StopAsync().ConfigureAwait(false);
             await c.DisposeAsync().ConfigureAwait(false);
         })).ConfigureAwait(false);
