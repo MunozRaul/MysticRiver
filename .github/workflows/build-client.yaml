@@ -4,6 +4,12 @@ on:
   push:
     tags:
       - '*.*.*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Semantic version to package (for example 0.4.0)
+        required: true
+        type: string
 
 jobs:
   build-client:
@@ -20,7 +26,15 @@ jobs:
       - name: Set version
         shell: pwsh
         run: |
-          $version = $env:GITHUB_REF_NAME
+          $version = "${{ github.event.inputs.version }}"
+          if ([string]::IsNullOrWhiteSpace($version)) {
+            $version = $env:GITHUB_REF_NAME
+          }
+
+          if ([string]::IsNullOrWhiteSpace($version)) {
+            throw "Could not determine release version from workflow input or tag ref."
+          }
+
           "VERSION=$version" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
           "ASSEMBLY_VERSION=$version.0" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
 
