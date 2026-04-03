@@ -1,5 +1,6 @@
 ﻿using AutoUpdaterDotNET;
 using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
 using System.Reflection;
 using System.Net.Http;
 using System.Text.Json;
@@ -75,7 +76,11 @@ namespace MysticRiver.Client
                 }
 
                 string tagName = tagElement.GetString() ?? string.Empty;
-                string? version = NormalizeVersion(tagName);
+                if (!TryNormalizeVersion(tagName, out string? version))
+                {
+                    Debug.WriteLine($"Release tag is not a valid semantic version: {tagName}");
+                    return null;
+                }
 
                 string? downloadUrl = null;
                 if (root.TryGetProperty("assets", out JsonElement assets) && assets.ValueKind == JsonValueKind.Array)
@@ -96,7 +101,7 @@ namespace MysticRiver.Client
                     }
                 }
 
-                if (string.IsNullOrWhiteSpace(version) || string.IsNullOrWhiteSpace(downloadUrl))
+                if (string.IsNullOrWhiteSpace(downloadUrl))
                 {
                     Debug.WriteLine("Update metadata is missing a valid version or client zip asset.");
                     return null;
@@ -128,24 +133,27 @@ namespace MysticRiver.Client
             return version ?? new Version(0, 0, 0, 0);
         }
 
-        private static string? NormalizeVersion(string tagName)
+        private static bool TryNormalizeVersion(string tagName, [NotNullWhen(true)] out string? normalized)
         {
+            normalized = null;
+
             string cleaned = tagName.Trim().TrimStart('v', 'V');
 
             Match match = Regex.Match(cleaned, @"^(\d+\.\d+\.\d+)(?:\.(\d+))?$");
             if (!match.Success)
             {
-                return null;
+                return false;
             }
 
             cleaned = match.Groups[2].Success ? match.Value : $"{match.Groups[1].Value}.0";
 
             if (Version.TryParse(cleaned, out Version? parsed))
             {
-                return parsed.ToString();
+                normalized = parsed.ToString();
+                return true;
             }
 
-            return null;
+            return false;
         }
 
         private sealed record ReleaseInfo(string Version, string DownloadUrl, string? ChangelogUrl);
