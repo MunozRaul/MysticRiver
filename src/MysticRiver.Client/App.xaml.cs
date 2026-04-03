@@ -1,42 +1,37 @@
-﻿using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Hosting;
 using System.Windows;
 
-namespace MysticRiver.Client
-{
-    public partial class App : Application
-    {
-        private readonly IHost _host;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 
-        public App()
-        {
-            _host = Host.CreateDefaultBuilder()
-                .ConfigureServices(services =>
-                {
-                    services.AddSingleton<UpdateService>();
-                    services.AddSingleton<MainWindow>();
-                })
-                .Build();
-        }
+namespace MysticRiver.Client;
 
-        protected override async void OnStartup(StartupEventArgs e)
-        {
-            base.OnStartup(e);
+public partial class App : Application {
+    private readonly IHost _host;
 
-            await _host.StartAsync();
+    public App() {
+        _host = Host.CreateDefaultBuilder()
+            .ConfigureServices(services => {
+                services.AddSingleton<UpdateService>();
+                services.AddSingleton<MainWindow>();
+            })
+            .Build();
+    }
 
-            var updater = _host.Services.GetRequiredService<UpdateService>();
-            updater.CheckForUpdates();
+    protected override async void OnStartup(StartupEventArgs e) {
+        base.OnStartup(e);
 
-            var mainWindow = _host.Services.GetRequiredService<MainWindow>();
-            mainWindow.Show();
-        }
+        await _host.StartAsync();
 
-        protected override async void OnExit(ExitEventArgs e)
-        {
-            await _host.StopAsync();
-            _host.Dispose();
-            base.OnExit(e);
-        }
+        var updater = _host.Services.GetRequiredService<UpdateService>();
+        updater.CheckForUpdates();
+
+        var mainWindow = _host.Services.GetRequiredService<MainWindow>();
+        mainWindow.Show();
+    }
+
+    protected override async void OnExit(ExitEventArgs e) {
+        await _host.StopAsync();
+        _host.Dispose();
+        base.OnExit(e);
     }
 }

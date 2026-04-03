@@ -1,7 +1,5 @@
-﻿namespace MysticRiver.Contracts
-{
-    public class Class1
-    {
+namespace MysticRiver.Contracts;
 
-    }
+public class Class1 {
+
 }
