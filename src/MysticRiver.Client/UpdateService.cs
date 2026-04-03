@@ -40,7 +40,7 @@ namespace MysticRiver.Client
             JsonElement root = doc.RootElement;
 
             string tagName = root.GetProperty("tag_name").GetString() ?? string.Empty;
-            string version = tagName;
+            string version = NormalizeVersion(tagName);
 
             string? downloadUrl = null;
             foreach (JsonElement asset in root.GetProperty("assets").EnumerateArray())
@@ -70,6 +70,23 @@ namespace MysticRiver.Client
                 DownloadURL = downloadUrl,
                 ChangelogURL = changelogUrl
             };
+        }
+
+        private static string NormalizeVersion(string tagName)
+        {
+            string cleaned = tagName.Trim().TrimStart('v', 'V');
+
+            if (Version.TryParse(cleaned, out Version? parsed))
+            {
+                if (parsed.Revision < 0)
+                {
+                    return $"{parsed.Major}.{parsed.Minor}.{parsed.Build}.0";
+                }
+
+                return parsed.ToString();
+            }
+
+            return cleaned;
         }
     }
 }
