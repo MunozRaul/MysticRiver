@@ -104,6 +104,7 @@ jobs:
     runs-on: ubuntu-24.04
     if: github.event_name == 'pull_request' && needs.version.outputs.version != ''
     permissions:
+      actions: write
       contents: write
 
     steps:
@@ -144,6 +145,23 @@ jobs:
           fi
 
           git push "https://x-access-token:${GH_PAT}@github.com/${{ github.repository }}.git" "refs/tags/$VERSION"
+
+      - name: Trigger client release workflow
+        env:
+          VERSION: ${{ needs.version.outputs.version }}
+          GH_PAT: ${{ secrets.GH_PAT }}
+        run: |
+          RESPONSE_CODE=$(curl -sS -o /dev/null -w "%{http_code}" \
+            -X POST \
+            -H "Accept: application/vnd.github+json" \
+            -H "Authorization: Bearer $GH_PAT" \
+            "https://api.github.com/repos/${{ github.repository }}/actions/workflows/build-client.yaml/dispatches" \
+            -d "{\"ref\":\"main\",\"inputs\":{\"version\":\"$VERSION\"}}")
+
+          if [ "$RESPONSE_CODE" != "204" ]; then
+            echo "Failed to dispatch build-client workflow. HTTP status: $RESPONSE_CODE"
+            exit 1
+          fi
 
   deploy-staging:
     needs: build
