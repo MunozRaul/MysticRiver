@@ -16,10 +16,10 @@ jobs:
           dotnet-version: ${{ inputs.dotnet-version }}
 
       - name: .NET Restore
-        run: dotnet restore MysticRiver.HttpApi/MysticRiver.HttpApi.csproj
+        run: dotnet restore src/MysticRiver.HttpApi/MysticRiver.HttpApi.csproj
 
       - name: .NET Build
-        run: dotnet build MysticRiver.HttpApi/MysticRiver.HttpApi.csproj --configuration Release
+        run: dotnet build src/MysticRiver.HttpApi/MysticRiver.HttpApi.csproj --configuration Release
 
       - name: .NET Tests
         run: |
