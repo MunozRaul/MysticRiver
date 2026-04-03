@@ -3,6 +3,9 @@ name: Build and Deploy
 on:
   push:
     branches: [main, staging]
+  pull_request:
+    types: [closed]
+    branches: [main]
   workflow_dispatch:
 
 env:
@@ -16,7 +19,7 @@ jobs:
 
   version:
     runs-on: ubuntu-24.04
-    if: github.ref == 'refs/heads/main'
+    if: github.event_name == 'pull_request' && github.event.pull_request.merged == true && github.event.pull_request.base.ref == 'main' && github.event.pull_request.head.ref == 'staging'
     outputs:
       version: ${{ steps.bump.outputs.version }}
 
@@ -28,20 +31,20 @@ jobs:
       - name: version computation
         id: bump
         env:
-          CONTAINS_MAJOR: ${{ contains(github.event.pull_request.labels.*.name, 'major') }}
-          CONTAINS_MINOR: ${{ contains(github.event.pull_request.labels.*.name, 'minor') }}
-          CONTAINS_PATCH: ${{ contains(github.event.pull_request.labels.*.name, 'patch') }}
+          LABELS: ${{ join(github.event.pull_request.labels.*.name, ' ') }}
         run: |
           git fetch --tags
-          TAG=$(git tag --sort=-v:refname | head -n 1 || echo 0.0.0)
+          TAG=$(git tag --sort=-v:refname | grep -E '^[0-9]+\.[0-9]+\.[0-9]+$' | head -n 1 || echo 0.0.0)
           VERSION="$TAG"
 
           IFS='.' read -r MA MI PA <<< "$VERSION"
-          if [[ ${{ env.CONTAINS_MAJOR }} == "true" ]]; then
+          LABELS_LOWER=$(echo "$LABELS" | tr '[:upper:]' '[:lower:]')
+
+          if [[ "$LABELS_LOWER" =~ (^|[[:space:]])major($|[[:space:]]) ]]; then
             MA=$((MA+1)); MI=0; PA=0
-          elif [[ ${{ env.CONTAINS_MINOR }} == "true" ]]; then
+          elif [[ "$LABELS_LOWER" =~ (^|[[:space:]])minor($|[[:space:]]) ]]; then
             MI=$((MI+1)); PA=0
-          elif [[ ${{ env.CONTAINS_PATCH }} == "true" ]]; then
+          elif [[ "$LABELS_LOWER" =~ (^|[[:space:]])patch($|[[:space:]]) ]]; then
             PA=$((PA+1))
           else
             echo "no new version, exiting..."
@@ -54,6 +57,7 @@ jobs:
   build:
     needs: dotnet
     runs-on: ubuntu-24.04
+    if: github.event_name == 'push'
     permissions:
       packages: write
       contents: read
@@ -77,10 +81,6 @@ jobs:
           # main tags
           if [ "${{ github.ref }}" == "refs/heads/main" ]; then
             docker tag $IMAGE:${{ github.sha }} $IMAGE:latest
-
-            if [ -n "${{ needs.version.outputs.version }}" ]; then
-              docker tag $IMAGE:${{ github.sha }} $IMAGE:${{ needs.version.outputs.version }}
-            fi
           fi
 
       - name: Login GHCR
@@ -96,35 +96,55 @@ jobs:
 
           if [ "${{ github.ref }}" == "refs/heads/main" ]; then
             docker push $IMAGE:latest
-
-            if [ -n "${{ needs.version.outputs.version }}" ]; then
-              docker push $IMAGE:${{ needs.version.outputs.version }}
-            fi
           fi
 
   tag:
     needs: version
     runs-on: ubuntu-24.04
-    if: github.ref == 'refs/heads/main' && needs.version.outputs.version != ''
+    if: github.event_name == 'pull_request' && needs.version.outputs.version != ''
+    permissions:
+      contents: write
 
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Create Git tag
+        env:
+          VERSION: ${{ needs.version.outputs.version }}
+          GH_PAT: ${{ secrets.GH_PAT }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
+          if git rev-parse "$VERSION" >/dev/null 2>&1; then
+            echo "Tag $VERSION already exists locally."
+          else
+            git fetch --tags
+            if git ls-remote --tags origin "refs/tags/$VERSION" | grep -q "$VERSION"; then
+              echo "Tag $VERSION already exists on origin."
+              exit 0
+            fi
+          fi
+
           git config user.name "github-actions"
           git config user.email "github-actions@github.com"
-          git tag ${{ needs.version.outputs.version }}
-          git push https://${{ secrets.GH_PAT }}@github.com/${{ github.repository }}.git ${{ needs.version.outputs.version }}
+          git tag "$VERSION"
+
+          TOKEN="$GH_PAT"
+          if [ -z "$TOKEN" ]; then
+            TOKEN="$GH_TOKEN"
+          fi
+
+          git push "https://x-access-token:${TOKEN}@github.com/${{ github.repository }}.git" "$VERSION"
 
   deploy-staging:
     needs: build
     runs-on: ubuntu-24.04
-    if: github.ref == 'refs/heads/staging'
+    if: github.event_name == 'push' && github.ref == 'refs/heads/staging'
 
     steps:
       - uses: actions/checkout@v4
-
+  
       - name: Setup kubeconfig
         run: |
           mkdir -p ~/.kube
@@ -139,7 +159,7 @@ jobs:
   deploy-prod:
     needs: build
     runs-on: ubuntu-24.04
-    if: github.ref == 'refs/heads/main'
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     environment: production
 
     steps:
