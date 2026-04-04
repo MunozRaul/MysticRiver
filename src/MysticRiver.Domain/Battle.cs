@@ -20,16 +20,24 @@ public class Battle
     public void ExecuteAction(Creature attacker, Creature target, int damage)
     {
         if (IsOver)
+        {
             throw new InvalidOperationException("No further turns are allowed: the battle is already over.");
+        }
 
         if (attacker != Player1 && attacker != Player2)
+        {
             throw new ArgumentException("Attacker does not belong to this battle.", nameof(attacker));
+        }
 
         if (target != Player1 && target != Player2)
+        {
             throw new ArgumentException("Target does not belong to this battle.", nameof(target));
+        }
 
         if (attacker == target)
+        {
             throw new ArgumentException("Attacker and target must be different creatures.", nameof(target));
+        }
 
         target.TakeDamage(damage);
     }
@@ -40,10 +48,14 @@ public class Battle
     public BattleResult? GetResult()
     {
         if (Player1.IsDead)
+        {
             return new BattleResult(winner: Player2, loser: Player1);
+        }
 
         if (Player2.IsDead)
+        {
             return new BattleResult(winner: Player1, loser: Player2);
+        }
 
         return null;
     }
