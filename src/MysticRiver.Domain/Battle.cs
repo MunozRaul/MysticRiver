@@ -1,6 +1,6 @@
 namespace MysticRiver.Domain;
 
-public class Battle
+public sealed class Battle
 {
     public Creature Player1 { get; }
     public Creature Player2 { get; }

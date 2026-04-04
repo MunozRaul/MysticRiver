@@ -1,6 +1,6 @@
 namespace MysticRiver.Domain;
 
-public class Creature
+public sealed class Creature
 {
     public string Name { get; }
     public int MaxHp { get; }
