@@ -1,6 +1,7 @@
 <Solution>
   <Folder Name="/Backend/">
     <Project Path="src/MysticRiver.Contracts/MysticRiver.Contracts.csproj" Id="fee8b294-7c1d-4e74-b098-6c28a5baf656" />
+    <Project Path="src/MysticRiver.Domain/MysticRiver.Domain.csproj" Id="a1b2c3d4-e5f6-7890-abcd-ef1234567890" />
     <Project Path="src/MysticRiver.HttpApi/MysticRiver.HttpApi.csproj" Id="0e55b68d-ec72-4110-96d1-7dddef9bf012" />
   </Folder>
   <Folder Name="/Frontend/">
