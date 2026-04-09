@@ -42,6 +42,24 @@ public class CreatureTests
 
         Assert.Equal(70, creature.CurrentHp);
     }
+
+    [Fact]
+    public void TakeDamage_WhenAmountIsZero_ThrowsArgumentOutOfRangeException()
+    {
+        var creature = new Creature("Gruk", 100);
+
+        var ex =Assert.Throws<ArgumentOutOfRangeException>(() => creature.TakeDamage(0));
+        Assert.Equal("amount", ex.ParamName);
+    }
+
+    [Fact]
+    public void TakeDamage_WhenAmountIsNegative_ThrowsArgumentOutOfRangeException()
+    {
+        var creature = new Creature("Gruk", 100);
+
+        var ex = Assert.Throws<ArgumentOutOfRangeException>(() => creature.TakeDamage(-1));
+        Assert.Equal("amount", ex.ParamName);
+    }
 }
 
 public class BattleTests
