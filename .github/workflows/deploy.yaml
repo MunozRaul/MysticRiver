@@ -3,6 +3,9 @@ name: Build and Deploy
 on:
   push:
     branches: [main, staging]
+  pull_request:
+    types: [closed]
+    branches: [main]
   workflow_dispatch:
 
 env:
@@ -16,7 +19,7 @@ jobs:
 
   version:
     runs-on: ubuntu-24.04
-    if: github.ref == 'refs/heads/main'
+    if: github.event_name == 'pull_request' && github.event.pull_request.merged == true && github.event.pull_request.base.ref == 'main' && github.event.pull_request.head.ref == 'staging'
     outputs:
       version: ${{ steps.bump.outputs.version }}
 
@@ -24,36 +27,38 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
+          ref: ${{ github.event.pull_request.merge_commit_sha }}
 
       - name: version computation
         id: bump
         env:
-          CONTAINS_MAJOR: ${{ contains(github.event.pull_request.labels.*.name, 'major') }}
-          CONTAINS_MINOR: ${{ contains(github.event.pull_request.labels.*.name, 'minor') }}
-          CONTAINS_PATCH: ${{ contains(github.event.pull_request.labels.*.name, 'patch') }}
+          LABELS: ${{ join(github.event.pull_request.labels.*.name, ' ') }}
         run: |
           git fetch --tags
-          TAG=$(git tag --sort=-v:refname | head -n 1 || echo v0.0.0)
+          TAG=$(git tag --sort=-v:refname | grep -E '^[0-9]+\.[0-9]+\.[0-9]+$' | head -n 1 || echo 0.0.0)
           VERSION="$TAG"
 
-          IFS='.' read -r MA MI PA <<< "${VERSION:1}" # skip first 'v' char
-          if [[ ${{ env.CONTAINS_MAJOR }} == "true" ]]; then
+          IFS='.' read -r MA MI PA <<< "$VERSION"
+          LABELS_LOWER=$(echo "$LABELS" | tr '[:upper:]' '[:lower:]')
+
+          if [[ "$LABELS_LOWER" =~ (^|[[:space:]])major($|[[:space:]]) ]]; then
             MA=$((MA+1)); MI=0; PA=0
-          elif [[ ${{ env.CONTAINS_MINOR }} == "true" ]]; then
+          elif [[ "$LABELS_LOWER" =~ (^|[[:space:]])minor($|[[:space:]]) ]]; then
             MI=$((MI+1)); PA=0
-          elif [[ ${{ env.CONTAINS_PATCH }} == "true" ]]; then
+          elif [[ "$LABELS_LOWER" =~ (^|[[:space:]])patch($|[[:space:]]) ]]; then
             PA=$((PA+1))
           else
             echo "no new version, exiting..."
             exit 0
           fi
 
-          NEW_TAG="v$MA.$MI.$PA"
+          NEW_TAG="$MA.$MI.$PA"
           echo "version=$NEW_TAG" >> $GITHUB_OUTPUT
 
   build:
     needs: dotnet
     runs-on: ubuntu-24.04
+    if: github.event_name == 'push'
     permissions:
       packages: write
       contents: read
@@ -77,10 +82,6 @@ jobs:
           # main tags
           if [ "${{ github.ref }}" == "refs/heads/main" ]; then
             docker tag $IMAGE:${{ github.sha }} $IMAGE:latest
-
-            if [ -n "${{ needs.version.outputs.version }}" ]; then
-              docker tag $IMAGE:${{ github.sha }} $IMAGE:${{ needs.version.outputs.version }}
-            fi
           fi
 
       - name: Login GHCR
@@ -96,35 +97,80 @@ jobs:
 
           if [ "${{ github.ref }}" == "refs/heads/main" ]; then
             docker push $IMAGE:latest
-
-            if [ -n "${{ needs.version.outputs.version }}" ]; then
-              docker push $IMAGE:${{ needs.version.outputs.version }}
-            fi
           fi
 
   tag:
     needs: version
     runs-on: ubuntu-24.04
-    if: github.ref == 'refs/heads/main' && needs.version.outputs.version != ''
+    if: github.event_name == 'pull_request' && needs.version.outputs.version != ''
+    permissions:
+      actions: write
+      contents: write
 
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Create Git tag
+        env:
+          VERSION: ${{ needs.version.outputs.version }}
+          GH_PAT: ${{ secrets.GH_PAT }}
+          MERGE_SHA: ${{ github.event.pull_request.merge_commit_sha }}
         run: |
+          if [ -z "$MERGE_SHA" ]; then
+            echo "Missing merge commit SHA from pull request event."
+            exit 1
+          fi
+
+          git checkout "$MERGE_SHA"
+
+          if git rev-parse "$VERSION" >/dev/null 2>&1; then
+            echo "Tag $VERSION already exists locally."
+          else
+            git fetch --tags
+            if git ls-remote --tags origin "refs/tags/$VERSION" | grep -q "$VERSION"; then
+              echo "Tag $VERSION already exists on origin."
+              exit 0
+            fi
+          fi
+
           git config user.name "github-actions"
           git config user.email "github-actions@github.com"
-          git tag ${{ needs.version.outputs.version }}
-          git push https://${{ secrets.GH_PAT }}@github.com/${{ github.repository }}.git ${{ needs.version.outputs.version }}
+          git tag -a "$VERSION" -m "Release $VERSION" "$MERGE_SHA"
+
+          if [ -z "$GH_PAT" ]; then
+            echo "GH_PAT secret is required to push tags that trigger other workflows."
+            exit 1
+          fi
+
+          git push "https://x-access-token:${GH_PAT}@github.com/${{ github.repository }}.git" "refs/tags/$VERSION"
+
+      - name: Trigger client release workflow
+        env:
+          VERSION: ${{ needs.version.outputs.version }}
+          GH_PAT: ${{ secrets.GH_PAT }}
+        run: |
+          RESPONSE_CODE=$(curl -sS -o /dev/null -w "%{http_code}" \
+            -X POST \
+            -H "Accept: application/vnd.github+json" \
+            -H "Authorization: Bearer $GH_PAT" \
+            "https://api.github.com/repos/${{ github.repository }}/actions/workflows/build-client.yaml/dispatches" \
+            -d "{\"ref\":\"main\",\"inputs\":{\"version\":\"$VERSION\"}}")
+
+          if [ "$RESPONSE_CODE" != "204" ]; then
+            echo "Failed to dispatch build-client workflow. HTTP status: $RESPONSE_CODE"
+            exit 1
+          fi
 
   deploy-staging:
     needs: build
     runs-on: ubuntu-24.04
-    if: github.ref == 'refs/heads/staging'
+    if: github.event_name == 'push' && github.ref == 'refs/heads/staging'
 
     steps:
       - uses: actions/checkout@v4
-
+  
       - name: Setup kubeconfig
         run: |
           mkdir -p ~/.kube
@@ -139,7 +185,7 @@ jobs:
   deploy-prod:
     needs: build
     runs-on: ubuntu-24.04
-    if: github.ref == 'refs/heads/main'
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     environment: production
 
     steps:

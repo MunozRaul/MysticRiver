@@ -20,7 +20,7 @@ public sealed class Creature
 
     public void TakeDamage(int amount)
     {
-        ArgumentOutOfRangeException.ThrowIfNegative(amount);
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(amount);
         CurrentHp = Math.Max(0, CurrentHp - amount);
     }
 }
