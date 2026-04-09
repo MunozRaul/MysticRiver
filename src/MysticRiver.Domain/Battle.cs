@@ -9,6 +9,14 @@ public sealed class Battle
 
     public Battle(Creature player1, Creature player2)
     {
+        ArgumentNullException.ThrowIfNull(player1);
+        ArgumentNullException.ThrowIfNull(player2);
+
+        if (ReferenceEquals(player1, player2))
+        {
+            throw new ArgumentException("player1 and player2 must be different instances.");
+        }
+
         Player1 = player1;
         Player2 = player2;
     }
@@ -43,13 +51,15 @@ public sealed class Battle
     }
 
     /// <summary>
-    /// Returns the battle result when the battle is over, or <c>null</c> if it is still in progress.
+    /// Returns <c>true</c> and sets <paramref name="result"/> when the battle is over;
+    /// returns <c>false</c> and sets <paramref name="result"/> to <c>null</c> when still in progress.
     /// </summary>
-    public BattleResult? GetResult()
+    public bool TryGetResult(out BattleResult? result)
     {
         if (Player1.IsDead)
         {
-            return new BattleResult(winner: Player2, loser: Player1);
+            result = new BattleResult(winner: Player2, loser: Player1);
+            return true;
         }
 
         if (Player2.IsDead)
@@ -121,5 +131,13 @@ public sealed class Battle
         }
 
         ExecuteAction(move.Attacker, move.Target, move.ResolveDamage());
+    }
+}
+            result = new BattleResult(winner: Player1, loser: Player2);
+            return true;
+        }
+
+        result = null;
+        return false;
     }
 }
