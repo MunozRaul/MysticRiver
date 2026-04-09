@@ -64,10 +64,12 @@ public sealed class Battle
 
         if (Player2.IsDead)
         {
-            return new BattleResult(winner: Player1, loser: Player2);
+            result = new BattleResult(winner: Player1, loser: Player2);
+            return true;
         }
 
-        return null;
+        result = null;
+        return false;
     }
 
     /// <summary>
@@ -98,7 +100,7 @@ public sealed class Battle
         ApplyMoveIfPossible(first);
         ApplyMoveIfPossible(second);
 
-        var outcome = GetResult();
+        TryGetResult(out var outcome);
         return new TurnResult(
             player1Hp: Player1.CurrentHp,
             player2Hp: Player2.CurrentHp,
@@ -131,13 +133,5 @@ public sealed class Battle
         }
 
         ExecuteAction(move.Attacker, move.Target, move.ResolveDamage());
-    }
-}
-            result = new BattleResult(winner: Player1, loser: Player2);
-            return true;
-        }
-
-        result = null;
-        return false;
     }
 }

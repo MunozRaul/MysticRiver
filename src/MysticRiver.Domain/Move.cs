@@ -16,7 +16,7 @@ public sealed record Move
     {
         ArgumentNullException.ThrowIfNull(attacker);
         ArgumentNullException.ThrowIfNull(target);
-        ArgumentOutOfRangeException.ThrowIfNegative(power);
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(power);
 
         if (attacker == target)
         {

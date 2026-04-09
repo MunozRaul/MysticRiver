@@ -133,17 +133,10 @@ public class ExecuteAttackTests
     }
 
     [Fact]
-    public void BasicAttack_WithZeroDamage_DoesNotChangeHp()
+    public void BasicAttack_WithZeroDamage_ThrowsArgumentOutOfRangeException()
     {
         var (battle, p1, p2) = CreateBattle(100, 100);
 
-        var zeroDamage = Move.BasicAttack(p1, p2, 0);
-        var normalDamage = Move.BasicAttack(p2, p1, 0);
-
-        var result = battle.ExecuteTurn(zeroDamage, normalDamage);
-
-        Assert.Equal(100, p1.CurrentHp);
-        Assert.Equal(100, p2.CurrentHp);
-        Assert.False(result.BattleEnded);
+        Assert.Throws<ArgumentOutOfRangeException>(() => Move.BasicAttack(p1, p2, 0));
     }
 }
