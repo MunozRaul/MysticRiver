@@ -1,10 +1,5 @@
 namespace MysticRiver.Domain;
 
-public enum MoveType
-{
-    BasicAttack = 0
-}
-
 public sealed record Move 
 {
     public Creature Attacker { get; }
