@@ -2,23 +2,23 @@ namespace MysticRiver.Domain;
 
 public sealed class Battle
 {
-    public Creature Player1 { get; }
-    public Creature Player2 { get; }
+    public Creature Creature1 { get; }
+    public Creature Creature2 { get; }
 
-    public bool IsOver => Player1.IsDead || Player2.IsDead;
+    public bool IsOver => Creature1.IsDead || Creature2.IsDead;
 
-    public Battle(Creature player1, Creature player2)
+    public Battle(Creature creature1, Creature creature2)
     {
-        ArgumentNullException.ThrowIfNull(player1);
-        ArgumentNullException.ThrowIfNull(player2);
+        ArgumentNullException.ThrowIfNull(creature1);
+        ArgumentNullException.ThrowIfNull(creature2);
 
-        if (ReferenceEquals(player1, player2))
+        if (ReferenceEquals(creature1, creature2))
         {
-            throw new ArgumentException("player1 and player2 must be different instances.");
+            throw new ArgumentException("creature1 and creature2 must be different instances.");
         }
 
-        Player1 = player1;
-        Player2 = player2;
+        Creature1 = creature1;
+        Creature2 = creature2;
     }
 
     /// <summary>
@@ -32,12 +32,12 @@ public sealed class Battle
             throw new InvalidOperationException("No further turns are allowed: the battle is already over.");
         }
 
-        if (attacker != Player1 && attacker != Player2)
+        if (attacker != Creature1 && attacker != Creature2)
         {
             throw new ArgumentException("Attacker does not belong to this battle.", nameof(attacker));
         }
 
-        if (target != Player1 && target != Player2)
+        if (target != Creature1 && target != Creature2)
         {
             throw new ArgumentException("Target does not belong to this battle.", nameof(target));
         }
@@ -56,15 +56,15 @@ public sealed class Battle
     /// </summary>
     public bool TryGetResult(out BattleResult? result)
     {
-        if (Player1.IsDead)
+        if (Creature1.IsDead)
         {
-            result = new BattleResult(winner: Player2, loser: Player1);
+            result = new BattleResult(winner: Creature2, loser: Creature1);
             return true;
         }
 
-        if (Player2.IsDead)
+        if (Creature2.IsDead)
         {
-            result = new BattleResult(winner: Player1, loser: Player2);
+            result = new BattleResult(winner: Creature1, loser: Creature2);
             return true;
         }
 
@@ -74,7 +74,7 @@ public sealed class Battle
 
     /// <summary>
     /// Executes one deterministic turn with two moves.
-    /// Player1's move resolves first; Player2's move resolves second unless the battle already ended.
+    /// Creature1's move resolves first; Creature2's move resolves second unless the battle already ended.
     /// </summary>
     public TurnResult ExecuteTurn(Move a, Move b)
     {
@@ -94,7 +94,7 @@ public sealed class Battle
             throw new ArgumentException("Each move must have a different attacker.");
         }
 
-        var first = a.Attacker == Player1 ? a : b;
+        var first = a.Attacker == Creature1 ? a : b;
         var second = first == a ? b : a;
 
         ApplyMoveIfPossible(first);
@@ -102,19 +102,19 @@ public sealed class Battle
 
         TryGetResult(out var outcome);
         return new TurnResult(
-            player1Hp: Player1.CurrentHp,
-            player2Hp: Player2.CurrentHp,
+            creature1Hp: Creature1.CurrentHp,
+            creature2Hp: Creature2.CurrentHp,
             finalResult: outcome);
     }
 
     private void ValidateMove(Move move, string paramName)
     {
-        if (move.Attacker != Player1 && move.Attacker != Player2)
+        if (move.Attacker != Creature1 && move.Attacker != Creature2)
         {
             throw new ArgumentException("Attacker does not belong to this battle.", paramName);
         }
 
-        if (move.Target != Player1 && move.Target != Player2)
+        if (move.Target != Creature1 && move.Target != Creature2)
         {
             throw new ArgumentException("Target does not belong to this battle.", paramName);
         }
