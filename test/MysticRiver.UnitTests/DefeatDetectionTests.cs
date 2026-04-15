@@ -66,23 +66,23 @@ public class BattleTests
 {
     private static (Battle battle, Creature p1, Creature p2) CreateBattle(int hp1 = 100, int hp2 = 100)
     {
-        var p1 = new Creature("Player1", hp1);
-        var p2 = new Creature("Player2", hp2);
+        var p1 = new Creature("Creature1", hp1);
+        var p2 = new Creature("Creature2", hp2);
         return (new Battle(p1, p2), p1, p2);
     }
 
     [Fact]
-    public void Constructor_WhenPlayer1IsNull_ThrowsArgumentNullException()
+    public void Constructor_WhenCreature1IsNull_ThrowsArgumentNullException()
     {
-        var p2 = new Creature("Player2", 100);
+        var p2 = new Creature("Creature2", 100);
 
         Assert.Throws<ArgumentNullException>(() => new Battle(null!, p2));
     }
 
     [Fact]
-    public void Constructor_WhenPlayer2IsNull_ThrowsArgumentNullException()
+    public void Constructor_WhenCreature2IsNull_ThrowsArgumentNullException()
     {
-        var p1 = new Creature("Player1", 100);
+        var p1 = new Creature("Creature1", 100);
 
         Assert.Throws<ArgumentNullException>(() => new Battle(p1, null!));
     }
@@ -90,7 +90,7 @@ public class BattleTests
     [Fact]
     public void Constructor_WhenBothPlayersAreSameInstance_ThrowsArgumentException()
     {
-        var p1 = new Creature("Player1", 100);
+        var p1 = new Creature("Creature1", 100);
 
         Assert.Throws<ArgumentException>(() => new Battle(p1, p1));
     }
@@ -104,7 +104,7 @@ public class BattleTests
     }
 
     [Fact]
-    public void IsOver_WhenPlayer1Dies_ReturnsTrue()
+    public void IsOver_WhenCreature1Dies_ReturnsTrue()
     {
         var (battle, p1, p2) = CreateBattle();
 
@@ -114,7 +114,7 @@ public class BattleTests
     }
 
     [Fact]
-    public void IsOver_WhenPlayer2Dies_ReturnsTrue()
+    public void IsOver_WhenCreature2Dies_ReturnsTrue()
     {
         var (battle, p1, p2) = CreateBattle();
 
@@ -133,7 +133,7 @@ public class BattleTests
     }
 
     [Fact]
-    public void TryGetResult_WhenPlayer2Dies_ReturnsPlayer1AsWinner()
+    public void TryGetResult_WhenCreature2Dies_ReturnsCreature1AsWinner()
     {
         var (battle, p1, p2) = CreateBattle();
 
@@ -145,7 +145,7 @@ public class BattleTests
     }
 
     [Fact]
-    public void TryGetResult_WhenPlayer1Dies_ReturnsPlayer2AsWinner()
+    public void TryGetResult_WhenCreature1Dies_ReturnsCreature2AsWinner()
     {
         var (battle, p1, p2) = CreateBattle();
 
