@@ -94,8 +94,7 @@ public sealed class Battle
             throw new ArgumentException("Each move must have a different attacker.");
         }
 
-        var first = a.Attacker == Creature1 ? a : b;
-        var second = first == a ? b : a;
+        var (first, second) = DetermineMoveOrder(a, b);
 
         ApplyMoveIfPossible(first);
         ApplyMoveIfPossible(second);
@@ -105,6 +104,23 @@ public sealed class Battle
             creature1Hp: Creature1.CurrentHp,
             creature2Hp: Creature2.CurrentHp,
             finalResult: outcome);
+    }
+
+    private (Move first, Move second) DetermineMoveOrder(Move a, Move b)
+    {
+        if (a.Attacker.Initiative > b.Attacker.Initiative)
+        {
+            return (a, b);
+        }
+        else if (b.Attacker.Initiative > a.Attacker.Initiative)
+        {
+            return (b, a);
+        }
+        else
+        {
+            // If initiatives are equal, default Creature1 going first (deterministic tiebreaker)
+            return ReferenceEquals(a.Attacker, Creature1) ? (a, b) : (b, a);
+        }
     }
 
     private void ValidateMove(Move move, string paramName)
