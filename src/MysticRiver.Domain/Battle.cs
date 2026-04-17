@@ -94,6 +94,13 @@ public sealed class Battle
             throw new ArgumentException("Each move must have a different attacker.");
         }
 
+        // Tick status effects before moves — fires on the turn after they were applied
+        Creature1.TickStatus();
+        if (!IsOver)
+        {
+            Creature2.TickStatus();
+        }
+
         var (first, second) = DetermineMoveOrder(a, b);
 
         ApplyMoveIfPossible(first);
@@ -103,6 +110,8 @@ public sealed class Battle
         return new TurnResult(
             creature1Hp: Creature1.CurrentHp,
             creature2Hp: Creature2.CurrentHp,
+            creature1Status: Creature1.Status,
+            creature2Status: Creature2.Status,
             finalResult: outcome);
     }
 
@@ -149,5 +158,10 @@ public sealed class Battle
         }
 
         ExecuteAction(move.Attacker, move.Target, move.ResolveDamage());
+
+        if (move.InflictedStatus != StatusEffect.None && !move.Target.IsDead)
+        {
+            move.Target.ApplyStatus(move.InflictedStatus);
+        }
     }
 }
