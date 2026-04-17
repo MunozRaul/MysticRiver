@@ -9,6 +9,8 @@ public sealed class Creature
 
     public bool IsDead => CurrentHp <= 0;
 
+    public StatusEffect Status { get; private set; }
+
     public Creature(string name, int maxHp, int initiative)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(name);
@@ -25,5 +27,22 @@ public sealed class Creature
     {
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(amount);
         CurrentHp = Math.Max(0, CurrentHp - amount);
+    }
+
+    public void ApplyStatus(StatusEffect effect) => Status = effect;
+
+    internal void TickStatus()
+    {
+        var damage = Status switch
+        {
+            StatusEffect.Poison => MaxHp / 8,
+            StatusEffect.Burn   => MaxHp / 16,
+            StatusEffect.Toxic  => MaxHp / 16,
+            _                   => 0
+        };
+        if (damage > 0)
+        {
+            TakeDamage(damage);
+        }
     }
 }
