@@ -6,9 +6,9 @@ public sealed record Move
     public Creature Target { get; }
     public MoveType Type { get; }
     public int Power { get; }
-    public StatusEffect InflictedStatus { get; }
+    public StatusEffect? InflictedStatus { get; }
 
-    private Move(Creature attacker, Creature target, MoveType type, int power, StatusEffect inflictedStatus = StatusEffect.None)
+    private Move(Creature attacker, Creature target, MoveType type, int power, StatusEffect? inflictedStatus = null)
     {
         ArgumentNullException.ThrowIfNull(attacker);
         ArgumentNullException.ThrowIfNull(target);

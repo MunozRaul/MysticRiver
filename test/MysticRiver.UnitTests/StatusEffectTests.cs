@@ -28,11 +28,11 @@ public class StatusEffectTests
     }
 
     [Fact]
-    public void ApplyStatus_DefaultStatus_IsNone()
+    public void ApplyStatus_DefaultStatus_IsNull()
     {
         var creature = new Creature("Gruk", 100, 10);
 
-        Assert.Equal(StatusEffect.None, creature.Status);
+        Assert.Null(creature.Status);
     }
 
     [Fact]
@@ -44,6 +44,17 @@ public class StatusEffectTests
         creature.ApplyStatus(StatusEffect.Burn);
 
         Assert.Equal(StatusEffect.Burn, creature.Status);
+    }
+
+    [Fact]
+    public void ClearStatus_ResetsStatusToNull()
+    {
+        var creature = new Creature("Gruk", 100, 10);
+        creature.ApplyStatus(StatusEffect.Poison);
+
+        creature.ClearStatus();
+
+        Assert.Null(creature.Status);
     }
 
     // ── StatusAttack move ────────────────────────────────────────────────────
@@ -60,14 +71,14 @@ public class StatusEffectTests
     }
 
     [Fact]
-    public void BasicAttack_Move_HasInflictedStatusNone()
+    public void BasicAttack_Move_HasNullInflictedStatus()
     {
         var p1 = new Creature("Creature1", 100, 10);
         var p2 = new Creature("Creature2", 100, 10);
 
         var move = Move.BasicAttack(p1, p2, 20);
 
-        Assert.Equal(StatusEffect.None, move.InflictedStatus);
+        Assert.Null(move.InflictedStatus);
     }
 
     // ── Status applied during battle turn ────────────────────────────────────
@@ -95,7 +106,7 @@ public class StatusEffectTests
 
         battle.ExecuteTurn(move1, move2);
 
-        Assert.Equal(StatusEffect.None, p2.Status);
+        Assert.Null(p2.Status);
     }
 
     [Fact]
@@ -109,7 +120,7 @@ public class StatusEffectTests
         battle.ExecuteTurn(killMove, normalMove);
 
         Assert.True(p2.IsDead);
-        Assert.Equal(StatusEffect.None, p2.Status);
+        Assert.Null(p2.Status);
     }
 
     // ── Status ticks on next turn ─────────────────────────────────────────────
@@ -156,7 +167,7 @@ public class StatusEffectTests
     }
 
     [Fact]
-    public void NoStatus_TurnTickCauseNoDamage()
+    public void NoStatus_TurnTickCausesNoDamage()
     {
         var (battle, p1, p2) = CreateBattle(hp1: 100, hp2: 100);
 
@@ -209,11 +220,11 @@ public class StatusEffectTests
             Move.BasicAttack(p2, p1, 10));
 
         Assert.Equal(StatusEffect.Poison, result.Creature2Status);
-        Assert.Equal(StatusEffect.None, result.Creature1Status);
+        Assert.Null(result.Creature1Status);
     }
 
     [Fact]
-    public void TurnResult_StatusIsNoneWhenNoStatusApplied()
+    public void TurnResult_StatusIsNullWhenNoStatusApplied()
     {
         var (battle, p1, p2) = CreateBattle();
 
@@ -221,7 +232,7 @@ public class StatusEffectTests
             Move.BasicAttack(p1, p2, 10),
             Move.BasicAttack(p2, p1, 10));
 
-        Assert.Equal(StatusEffect.None, result.Creature1Status);
-        Assert.Equal(StatusEffect.None, result.Creature2Status);
+        Assert.Null(result.Creature1Status);
+        Assert.Null(result.Creature2Status);
     }
 }

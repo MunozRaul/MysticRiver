@@ -9,7 +9,7 @@ public sealed class Creature
 
     public bool IsDead => CurrentHp <= 0;
 
-    public StatusEffect Status { get; private set; }
+    public StatusEffect? Status { get; private set; }
 
     public Creature(string name, int maxHp, int initiative)
     {
@@ -31,8 +31,15 @@ public sealed class Creature
 
     public void ApplyStatus(StatusEffect effect) => Status = effect;
 
+    public void ClearStatus() => Status = null;
+
     internal void TickStatus()
     {
+        if (Status is null)
+        {
+            return;
+        }
+
         var damage = Status switch
         {
             StatusEffect.Poison => MaxHp / 8,

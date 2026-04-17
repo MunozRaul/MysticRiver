@@ -159,9 +159,9 @@ public sealed class Battle
 
         ExecuteAction(move.Attacker, move.Target, move.ResolveDamage());
 
-        if (move.InflictedStatus != StatusEffect.None && !move.Target.IsDead)
+        if (move.InflictedStatus is not null && !move.Target.IsDead)
         {
-            move.Target.ApplyStatus(move.InflictedStatus);
+            move.Target.ApplyStatus(move.InflictedStatus.Value);
         }
     }
 }
