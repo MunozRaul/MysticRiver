@@ -11,7 +11,7 @@ public sealed class Creature {
     public int MagicalResistance { get; set; }
     public bool IsDead => CurrentHp <= 0;
     public int CurrentShield { get; private set; }
-    public StatusEffect Status { get; private set; }
+    public StatusEffect? Status { get; private set; }
     // TODO: Crowd Control
 
     public Creature(
@@ -80,9 +80,15 @@ public sealed class Creature {
 
     public void ApplyStatus(StatusEffect effect) => Status = effect;
 
+    public void ClearStatus() => Status = null;
+
     internal void TickStatus()
     {
-        var damage = Status switch
+        if (Status is null) {
+            return;
+        }
+
+        var damage = Status.Value switch
         {
             StatusEffect.Poison => MaxHp / 8,
             StatusEffect.Burn   => MaxHp / 16,
