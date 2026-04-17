@@ -5,10 +5,14 @@ namespace MysticRiver.UnitTests;
 
 public class ExecuteAttackTests
 {
-    private static (Battle battle, Creature p1, Creature p2) CreateBattle(int hp1 = 100, int hp2 = 100)
+    private static (Battle battle, Creature p1, Creature p2) CreateBattle(
+        int hp1 = 100,
+        int hp2 = 100,
+        int initiative1 = 10,
+        int initiative2 = 10)
     {
-        var p1 = new Creature("Creature1", hp1);
-        var p2 = new Creature("Creature2", hp2);
+        var p1 = new Creature("Creature1", hp1, initiative1);
+        var p2 = new Creature("Creature2", hp2, initiative2);
         return (new Battle(p1, p2), p1, p2);
     }
 
@@ -111,7 +115,7 @@ public class ExecuteAttackTests
     public void ExecuteTurn_WithAttackerNotInBattle_ThrowsArgumentException()
     {
         var (battle, p1, p2) = CreateBattle();
-        var outsider = new Creature("Outsider", 100);
+        var outsider = new Creature("Outsider", 100, 10);
 
         var moveA = Move.BasicAttack(p1, p2, 10);
         var moveB = Move.BasicAttack(outsider, p1, 15);
