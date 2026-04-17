@@ -95,10 +95,10 @@ public sealed class Battle
         }
 
         // Tick status effects before moves — fires on the turn after they were applied
-        Creature1.TickStatus();
+        Creature1.ApplyEndOfTurnEffects();
         if (!IsOver)
         {
-            Creature2.TickStatus();
+            Creature2.ApplyEndOfTurnEffects();
         }
 
         var (first, second) = DetermineMoveOrder(a, b);

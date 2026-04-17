@@ -33,7 +33,7 @@ public sealed class Creature
 
     public void ClearStatus() => Status = null;
 
-    internal void TickStatus()
+    internal void ApplyEndOfTurnEffects()
     {
         if (Status is null)
         {

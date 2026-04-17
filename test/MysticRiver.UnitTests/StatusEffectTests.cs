@@ -130,20 +130,19 @@ public class StatusEffectTests
     {
         var (battle, p1, p2) = CreateBattle(hp1: 100, hp2: 100);
 
-        // Turn 1: apply poison to p2
-        var statusMove = Move.StatusAttack(p1, p2, 1, StatusEffect.Poison);
-        var noOpMove = Move.BasicAttack(p2, p1, 1);
-        battle.ExecuteTurn(statusMove, noOpMove);
+        // Turn 1: p1 attacks p2 for 1 → p2 HP = 99; poison applied
+        battle.ExecuteTurn(
+            Move.StatusAttack(p1, p2, 1, StatusEffect.Poison),
+            Move.BasicAttack(p2, p1, 1));
 
         Assert.Equal(StatusEffect.Poison, p2.Status);
-        var hpAfterTurn1 = p2.CurrentHp; // 99 (took 1 damage)
 
-        // Turn 2: poison ticks (100 / 8 = 12) + p1 attacks for 1 = 13 total damage
-        var move1 = Move.BasicAttack(p1, p2, 1);
-        var move2 = Move.BasicAttack(p2, p1, 1);
-        battle.ExecuteTurn(move1, move2);
+        // Turn 2: poison tick = MaxHp/8 = 12; p1 attacks for 1 → p2 HP = 99 - 12 - 1 = 86
+        battle.ExecuteTurn(
+            Move.BasicAttack(p1, p2, 1),
+            Move.BasicAttack(p2, p1, 1));
 
-        Assert.Equal(hpAfterTurn1 - 12 - 1, p2.CurrentHp);
+        Assert.Equal(86, p2.CurrentHp);
     }
 
     [Fact]
@@ -151,19 +150,17 @@ public class StatusEffectTests
     {
         var (battle, p1, p2) = CreateBattle(hp1: 100, hp2: 100);
 
-        // Turn 1: apply burn to p2
+        // Turn 1: p1 attacks p2 for 1 → p2 HP = 99; burn applied
         battle.ExecuteTurn(
             Move.StatusAttack(p1, p2, 1, StatusEffect.Burn),
             Move.BasicAttack(p2, p1, 1));
 
-        var hpAfterTurn1 = p2.CurrentHp; // 99 (took 1 damage)
-
-        // Turn 2: burn ticks (100 / 16 = 6) + p1 attacks for 1 = 7 total damage
+        // Turn 2: burn tick = MaxHp/16 = 6; p1 attacks for 1 → p2 HP = 99 - 6 - 1 = 92
         battle.ExecuteTurn(
             Move.BasicAttack(p1, p2, 1),
             Move.BasicAttack(p2, p1, 1));
 
-        Assert.Equal(hpAfterTurn1 - 6 - 1, p2.CurrentHp);
+        Assert.Equal(92, p2.CurrentHp);
     }
 
     [Fact]
