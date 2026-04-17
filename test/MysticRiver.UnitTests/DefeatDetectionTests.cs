@@ -7,7 +7,7 @@ public class CreatureTests
     [Fact]
     public void IsDead_WhenHpAboveZero_ReturnsFalse()
     {
-        var creature = new Creature("Gruk", 100);
+        var creature = new Creature("Gruk", 100, 10);
 
         Assert.False(creature.IsDead);
     }
@@ -15,7 +15,7 @@ public class CreatureTests
     [Fact]
     public void IsDead_WhenHpReducedToZero_ReturnsTrue()
     {
-        var creature = new Creature("Gruk", 100);
+        var creature = new Creature("Gruk", 100, 10);
 
         creature.TakeDamage(100);
 
@@ -25,7 +25,7 @@ public class CreatureTests
     [Fact]
     public void IsDead_WhenDamageExceedsHp_ReturnsTrueAndHpIsZero()
     {
-        var creature = new Creature("Gruk", 50);
+        var creature = new Creature("Gruk", 50, 10);
 
         creature.TakeDamage(200);
 
@@ -36,7 +36,7 @@ public class CreatureTests
     [Fact]
     public void TakeDamage_ReducesHpByAmount()
     {
-        var creature = new Creature("Gruk", 100);
+        var creature = new Creature("Gruk", 100, 10);
 
         creature.TakeDamage(30);
 
@@ -46,7 +46,7 @@ public class CreatureTests
     [Fact]
     public void TakeDamage_WhenAmountIsZero_ThrowsArgumentOutOfRangeException()
     {
-        var creature = new Creature("Gruk", 100);
+        var creature = new Creature("Gruk", 100, 10);
 
         var ex =Assert.Throws<ArgumentOutOfRangeException>(() => creature.TakeDamage(0));
         Assert.Equal("amount", ex.ParamName);
@@ -55,7 +55,7 @@ public class CreatureTests
     [Fact]
     public void TakeDamage_WhenAmountIsNegative_ThrowsArgumentOutOfRangeException()
     {
-        var creature = new Creature("Gruk", 100);
+        var creature = new Creature("Gruk", 100, 10);
 
         var ex = Assert.Throws<ArgumentOutOfRangeException>(() => creature.TakeDamage(-1));
         Assert.Equal("amount", ex.ParamName);
@@ -64,17 +64,21 @@ public class CreatureTests
 
 public class BattleTests
 {
-    private static (Battle battle, Creature p1, Creature p2) CreateBattle(int hp1 = 100, int hp2 = 100)
+    private static (Battle battle, Creature p1, Creature p2) CreateBattle(
+        int hp1 = 100,
+        int hp2 = 100,
+        int initiative1 = 10,
+        int initiative2 = 20)
     {
-        var p1 = new Creature("Creature1", hp1);
-        var p2 = new Creature("Creature2", hp2);
+        var p1 = new Creature("Creature1", hp1, initiative1);
+        var p2 = new Creature("Creature2", hp2, initiative2);
         return (new Battle(p1, p2), p1, p2);
     }
 
     [Fact]
     public void Constructor_WhenCreature1IsNull_ThrowsArgumentNullException()
     {
-        var p2 = new Creature("Creature2", 100);
+        var p2 = new Creature("Creature2", 100, 20);
 
         Assert.Throws<ArgumentNullException>(() => new Battle(null!, p2));
     }
@@ -82,7 +86,7 @@ public class BattleTests
     [Fact]
     public void Constructor_WhenCreature2IsNull_ThrowsArgumentNullException()
     {
-        var p1 = new Creature("Creature1", 100);
+        var p1 = new Creature("Creature1", 100, 10);
 
         Assert.Throws<ArgumentNullException>(() => new Battle(p1, null!));
     }
@@ -90,7 +94,7 @@ public class BattleTests
     [Fact]
     public void Constructor_WhenBothPlayersAreSameInstance_ThrowsArgumentException()
     {
-        var p1 = new Creature("Creature1", 100);
+        var p1 = new Creature("Creature1", 100, 10);
 
         Assert.Throws<ArgumentException>(() => new Battle(p1, p1));
     }
@@ -169,7 +173,7 @@ public class BattleTests
     public void ExecuteAction_WhenAttackerNotInBattle_ThrowsArgumentException()
     {
         var (battle, _, p2) = CreateBattle();
-        var outsider = new Creature("Outsider", 100);
+        var outsider = new Creature("Outsider", 100, 10);
 
         Assert.Throws<ArgumentException>(() => battle.ExecuteAction(outsider, p2, 10));
     }
@@ -178,7 +182,7 @@ public class BattleTests
     public void ExecuteAction_WhenTargetNotInBattle_ThrowsArgumentException()
     {
         var (battle, p1, _) = CreateBattle();
-        var outsider = new Creature("Outsider", 100);
+        var outsider = new Creature("Outsider", 100, 10);
 
         Assert.Throws<ArgumentException>(() => battle.ExecuteAction(p1, outsider, 10));
     }
