@@ -11,12 +11,21 @@
   <ItemGroup>
     <PackageReference Include="Autoupdater.NET.Official" />
     <PackageReference Include="Microsoft.Extensions.Hosting" />
+    <PackageReference Include="Microsoft.Extensions.Http" />
+    <PackageReference Include="Microsoft.AspNetCore.SignalR.Client" />
   </ItemGroup>
 
   <ItemGroup>
     <Content Include="Assets\Placeholders\*.png">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
+    <Content Include="appsettings.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\MysticRiver.Contracts\MysticRiver.Contracts.csproj" />
   </ItemGroup>
 
 </Project>
