@@ -56,6 +56,12 @@ public sealed class Battle {
             throw new ArgumentException("Each move must have a different actor.");
         }
 
+        // Tick status effects before resolving actions so effects apply on subsequent turns.
+        Creature1.TickStatus();
+        if (!IsOver) {
+            Creature2.TickStatus();
+        }
+
         var (first, second) = DetermineMoveOrder(a, b);
         ApplyMoveIfPossible(first);
         ApplyMoveIfPossible(second);
@@ -66,6 +72,8 @@ public sealed class Battle {
         return new TurnResult(
             creature1Hp: Creature1.CurrentHp,
             creature2Hp: Creature2.CurrentHp,
+            creature1Status: Creature1.Status,
+            creature2Status: Creature2.Status,
             finalResult: outcome
         );
     }

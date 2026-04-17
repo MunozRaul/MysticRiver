@@ -6,18 +6,27 @@ namespace MysticRiver.Domain;
 public sealed class TurnResult {
     public int Creature1Hp { get; }
     public int Creature2Hp { get; }
+    public StatusEffect Creature1Status { get; }
+    public StatusEffect Creature2Status { get; }
     public bool BattleEnded { get; }
     public BattleResult? FinalResult { get; }
 
     /// <summary>
-    /// Creates a turn result from post-turn HP values and optional final battle result.
+    /// Creates a turn result from post-turn HP/status values and optional final battle result.
     /// </summary>
-    public TurnResult(int creature1Hp, int creature2Hp, BattleResult? finalResult = null) {
+    public TurnResult(
+        int creature1Hp,
+        int creature2Hp,
+        StatusEffect creature1Status = StatusEffect.None,
+        StatusEffect creature2Status = StatusEffect.None,
+        BattleResult? finalResult = null) {
         ArgumentOutOfRangeException.ThrowIfNegative(creature1Hp);
         ArgumentOutOfRangeException.ThrowIfNegative(creature2Hp);
 
         Creature1Hp = creature1Hp;
         Creature2Hp = creature2Hp;
+        Creature1Status = creature1Status;
+        Creature2Status = creature2Status;
         FinalResult = finalResult;
         BattleEnded = finalResult is not null;
     }
