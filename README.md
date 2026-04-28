@@ -32,3 +32,16 @@ See [ADR-003](https://github.com/MunozRaul/MysticRiver/wiki/ADR-003-Communicatio
 
 The goal of this project is to design and implement a robust, deterministic, and testable multiplayer system
 with a strong focus on software architecture and server-side game logic.
+
+---
+
+## 🕹️ Product Vision
+
+Mystic River aims to become a **multiplayer, turn-based pixel game with a medieval-fantasy theme**, inspired by battle presentation styles like **Final Fantasy X** and **Clair Obscur: Expedition 33**.
+
+Key gameplay direction:
+
+* A visible **future turn-order list** (initiative queue) in the top-left battle UI.
+* Rich fantasy combat abilities, including **damage spells, healing spells, buffs, and debuffs**.
+* An **authoritative backend** that validates multiplayer actions and combat outcomes.
+* A hybrid communication model between WPF client and backend: **REST controllers + SignalR**.
