@@ -1,6 +1,5 @@
 namespace MysticRiver.Domain;
 
-    public enum MoveType
-    {
-        BasicAttack = 0
-    }
+public enum MoveType {
+    BasicAttack = 0
+}
