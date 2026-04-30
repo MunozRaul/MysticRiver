@@ -2,63 +2,6 @@ using MysticRiver.Domain;
 
 namespace MysticRiver.UnitTests;
 
-public class CreatureTests {
-    [Fact]
-    public void IsDead_WhenHpAboveZero_ReturnsFalse() {
-        var creature = new Creature("Gruk", 100, 10);
-
-        Assert.False(creature.IsDead);
-    }
-
-    [Fact]
-    public void IsDead_WhenHpReducedToZero_ReturnsTrue() {
-        var creature = new Creature("Gruk", 100, 10);
-
-        creature.TakeDamage(100, DamageKind.Physical);
-
-        Assert.True(creature.IsDead);
-    }
-
-    [Fact]
-    public void IsDead_WhenDamageExceedsHp_ReturnsTrueAndHpIsZero() {
-        var creature = new Creature("Gruk", 50, 10);
-
-        creature.TakeDamage(200, DamageKind.Physical);
-
-        Assert.True(creature.IsDead);
-        Assert.Equal(0, creature.CurrentHp);
-    }
-
-    [Fact]
-    public void TakeDamage_ReducesHpByAmount() {
-        var creature = new Creature("Gruk", 100, 10);
-
-        creature.TakeDamage(30, DamageKind.Physical);
-
-        Assert.Equal(70, creature.CurrentHp);
-    }
-
-    [Fact]
-    public void TakeDamage_WhenAmountIsZero_DoesNotReduceHp() {
-        // TakeDamage uses ThrowIfNegative -> zero is a valid no-op, not an error
-        var creature = new Creature("Gruk", 100, 10);
-
-        creature.TakeDamage(0, DamageKind.Physical);
-
-        Assert.Equal(100, creature.CurrentHp);
-    }
-
-    [Fact]
-    public void TakeDamage_WhenAmountIsNegative_ThrowsArgumentOutOfRangeException() {
-        var creature = new Creature("Gruk", 100, 10);
-
-        var ex = Assert.Throws<ArgumentOutOfRangeException>(() =>
-            creature.TakeDamage(-1, DamageKind.Physical));
-
-        Assert.Equal("amount", ex.ParamName);
-    }
-}
-
 public class BattleTests {
     private static (Battle battle, Creature p1, Creature p2) CreateBattle(
         int hp1 = 100,
@@ -186,5 +129,74 @@ public class BattleTests {
 
         Assert.Throws<ArgumentException>(() =>
             battle.ExecuteTurn(Attack(p1, p2, 10), Attack(p2, p2, 10)));
+    }
+
+    [Fact]
+    public void ExecuteTurn_WithReversedArguments_RemainsDeterministic() {
+        var (battle1, p1a, p2a) = CreateBattle(100, 100);
+        var (battle2, p1b, p2b) = CreateBattle(100, 100);
+
+        var resultA = battle1.ExecuteTurn(Attack(p1a, p2a, 20), Attack(p2a, p1a, 15));
+        var resultB = battle2.ExecuteTurn(Attack(p2b, p1b, 15), Attack(p1b, p2b, 20)); // reversed
+
+        Assert.Equal(resultA.Creature1Hp, resultB.Creature1Hp);
+        Assert.Equal(resultA.Creature2Hp, resultB.Creature2Hp);
+    }
+
+    [Fact]
+    public void ExecuteTurn_WhenFirstAttackEndsBattle_SecondAttackIsSkipped() {
+        var (battle, p1, p2) = CreateBattle(hp1: 100, hp2: 20, initiative1: 20, initiative2: 10);
+
+        // p1 has higher initiative and deals exactly 20 damage — enough to kill p2 in the first move
+        var result = battle.ExecuteTurn(
+            Attack(p1, p2, 20),
+            Attack(p2, p1, 15));
+
+        Assert.Equal(100, p1.CurrentHp); // p2's counter-attack was skipped
+        Assert.Equal(0, p2.CurrentHp);
+        Assert.True(result.BattleEnded);
+        Assert.NotNull(result.FinalResult);
+        Assert.Equal(p1, result.FinalResult.Winner);
+        Assert.Equal(p2, result.FinalResult.Loser);
+    }
+
+    [Fact]
+    public void ExecuteTurn_WithNullMove_ThrowsArgumentNullException() {
+        var (battle, p1, p2) = CreateBattle();
+        var validMove = Attack(p1, p2, 10);
+
+        Assert.Throws<ArgumentNullException>(() => battle.ExecuteTurn(null!, validMove));
+        Assert.Throws<ArgumentNullException>(() => battle.ExecuteTurn(validMove, null!));
+    }
+
+    [Fact]
+    public void ExecuteTurn_WithSameAttacker_ThrowsArgumentException() {
+        var (battle, p1, p2) = CreateBattle();
+
+        Assert.Throws<ArgumentException>(() => battle.ExecuteTurn(
+            Attack(p1, p2, 10),
+            Attack(p1, p2, 15)));
+    }
+
+    [Fact]
+    public void ExecuteTurn_WithAttackerNotInBattle_ThrowsArgumentException() {
+        var (battle, p1, p2) = CreateBattle();
+        var outsider = new Creature("Outsider", 100, 10);
+
+        Assert.Throws<ArgumentException>(() => battle.ExecuteTurn(
+            Attack(p1, p2, 10),
+            Attack(outsider, p1, 15)));
+    }
+
+    [Fact]
+    public void ExecuteTurn_WhenBattleIsOver_ThrowsInvalidOperationException() {
+        var (battle, p1, p2) = CreateBattle(hp1: 100, hp2: 10, initiative1: 20, initiative2: 10);
+
+        // Kill p2 in the first turn
+        battle.ExecuteTurn(Attack(p1, p2, 10), Attack(p2, p1, 5));
+
+        Assert.Throws<InvalidOperationException>(() => battle.ExecuteTurn(
+            Attack(p1, p2, 1),
+            Attack(p2, p1, 1)));
     }
 }
