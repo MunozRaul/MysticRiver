@@ -2,7 +2,7 @@ using MysticRiver.Domain;
 
 namespace MysticRiver.UnitTests;
 
-public class ExecuteAttackTests {
+public class DamageMoveTests {
     private static (Battle battle, Creature p1, Creature p2) CreateBattle(
         int hp1 = 100,
         int hp2 = 100,
