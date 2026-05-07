@@ -156,7 +156,7 @@ jobs:
             -H "Accept: application/vnd.github+json" \
             -H "Authorization: Bearer $GH_PAT" \
             "https://api.github.com/repos/${{ github.repository }}/actions/workflows/build-client.yaml/dispatches" \
-            -d "{\"ref\":\"main\",\"inputs\":{\"version\":\"$VERSION\"}}")
+            -d "{\"ref\":\"main\",\"inputs\":{\"version\":\"$VERSION\",\"target_environment\":\"production\"}}")
 
           if [ "$RESPONSE_CODE" != "204" ]; then
             echo "Failed to dispatch build-client workflow. HTTP status: $RESPONSE_CODE"
@@ -178,9 +178,10 @@ jobs:
 
       - name: Deploy staging
         run: |
-          kubectl --context=mysticriver-staging -n mr-staging set image deployment/mysticriver-api mysticriver-api=$IMAGE:${{ github.sha }} || true
           kubectl --context=mysticriver-staging -n mr-staging apply -f k8s/base
           kubectl --context=mysticriver-staging -n mr-staging apply -f k8s/staging
+          kubectl --context=mysticriver-staging -n mr-staging set image deployment/mysticriver-api mysticriver-api=$IMAGE:${{ github.sha }}
+          kubectl --context=mysticriver-staging -n mr-staging rollout status deployment/mysticriver-api
 
   deploy-prod:
     needs: build
@@ -198,6 +199,7 @@ jobs:
 
       - name: Deploy prod
         run: |
-          kubectl --context=mysticriver-prod -n mr-prod set image deployment/mysticriver-api mysticriver-api=$IMAGE:${{ github.sha }} || true
           kubectl --context=mysticriver-prod -n mr-prod apply -f k8s/base
           kubectl --context=mysticriver-prod -n mr-prod apply -f k8s/prod
+          kubectl --context=mysticriver-prod -n mr-prod set image deployment/mysticriver-api mysticriver-api=$IMAGE:${{ github.sha }}
+          kubectl --context=mysticriver-prod -n mr-prod rollout status deployment/mysticriver-api
