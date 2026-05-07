@@ -156,7 +156,7 @@ jobs:
             -H "Accept: application/vnd.github+json" \
             -H "Authorization: Bearer $GH_PAT" \
             "https://api.github.com/repos/${{ github.repository }}/actions/workflows/build-client.yaml/dispatches" \
-            -d "{\"ref\":\"main\",\"inputs\":{\"version\":\"$VERSION\"}}")
+            -d "{\"ref\":\"main\",\"inputs\":{\"version\":\"$VERSION\",\"target_environment\":\"production\"}}")
 
           if [ "$RESPONSE_CODE" != "204" ]; then
             echo "Failed to dispatch build-client workflow. HTTP status: $RESPONSE_CODE"
