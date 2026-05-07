@@ -7,13 +7,11 @@ using MysticRiver.Contracts.Battle;
 
 namespace MysticRiver.IntegrationTests;
 
-public sealed class BattlesApiTests(WebApplicationFactory<Program> factory) : IClassFixture<WebApplicationFactory<Program>>
-{
+public sealed class BattlesApiTests(WebApplicationFactory<Program> factory) : IClassFixture<WebApplicationFactory<Program>> {
     private readonly WebApplicationFactory<Program> _factory = factory;
 
     [Fact]
-    public async Task StartBattle_ReturnsInitialBattleState()
-    {
+    public async Task StartBattle_ReturnsInitialBattleState() {
         using var client = _factory.CreateClient();
         var cancellationToken = TestContext.Current.CancellationToken;
 
@@ -31,8 +29,7 @@ public sealed class BattlesApiTests(WebApplicationFactory<Program> factory) : IC
     }
 
     [Fact]
-    public async Task ExecuteBasicAttack_ReturnsUpdatedDeterministicState()
-    {
+    public async Task ExecuteBasicAttack_ReturnsUpdatedDeterministicState() {
         using var client = _factory.CreateClient();
         var cancellationToken = TestContext.Current.CancellationToken;
 
@@ -57,8 +54,7 @@ public sealed class BattlesApiTests(WebApplicationFactory<Program> factory) : IC
     }
 
     [Fact]
-    public async Task ExecuteBasicAttack_ForUnknownBattle_ReturnsNotFound()
-    {
+    public async Task ExecuteBasicAttack_ForUnknownBattle_ReturnsNotFound() {
         using var client = _factory.CreateClient();
         var cancellationToken = TestContext.Current.CancellationToken;
 

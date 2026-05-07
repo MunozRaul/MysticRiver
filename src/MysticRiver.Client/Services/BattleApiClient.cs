@@ -5,12 +5,10 @@ using MysticRiver.Contracts.Battle;
 
 namespace MysticRiver.Client.Services;
 
-public sealed class BattleApiClient(HttpClient httpClient)
-{
+public sealed class BattleApiClient(HttpClient httpClient) {
     private readonly HttpClient _httpClient = httpClient;
 
-    public async Task<StartBattleResponse> StartBattleAsync(StartBattleRequest? request = null, CancellationToken cancellationToken = default)
-    {
+    public async Task<StartBattleResponse> StartBattleAsync(StartBattleRequest? request = null, CancellationToken cancellationToken = default) {
         var payload = request ?? new StartBattleRequest();
         using var response = await _httpClient.PostAsJsonAsync("api/battles/start", payload, cancellationToken);
         response.EnsureSuccessStatusCode();
@@ -22,8 +20,7 @@ public sealed class BattleApiClient(HttpClient httpClient)
     public async Task<BattleStateDto> ExecuteBasicAttackAsync(
         string battleId,
         ExecuteBasicAttackRequest request,
-        CancellationToken cancellationToken = default)
-    {
+        CancellationToken cancellationToken = default) {
         ArgumentException.ThrowIfNullOrWhiteSpace(battleId);
         ArgumentNullException.ThrowIfNull(request);
 

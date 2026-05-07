@@ -1,6 +1,6 @@
-using Scalar.AspNetCore;
-
 using MysticRiver.HttpApi.Battles;
+
+using Scalar.AspNetCore;
 
 var builder = WebApplication.CreateBuilder(args);
 

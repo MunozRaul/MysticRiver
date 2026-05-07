@@ -5,18 +5,15 @@ using MysticRiver.Contracts.Battle;
 
 namespace MysticRiver.Client.Services;
 
-public sealed class BattleRealtimeClient : IAsyncDisposable
-{
+public sealed class BattleRealtimeClient : IAsyncDisposable {
     private readonly HubConnection _hubConnection;
 
     public event EventHandler<BattleStateUpdatedEvent>? BattleStateUpdated;
 
-    public BattleRealtimeClient(ClientOptions clientOptions)
-    {
+    public BattleRealtimeClient(ClientOptions clientOptions) {
         ArgumentNullException.ThrowIfNull(clientOptions);
 
-        if (!Uri.TryCreate(clientOptions.ApiBaseUrl, UriKind.Absolute, out var baseUri))
-        {
+        if (!Uri.TryCreate(clientOptions.ApiBaseUrl, UriKind.Absolute, out var baseUri)) {
             throw new InvalidOperationException($"Invalid configuration value for {ClientOptions.SectionName}:ApiBaseUrl.");
         }
 
@@ -32,25 +29,21 @@ public sealed class BattleRealtimeClient : IAsyncDisposable
             battleEvent => BattleStateUpdated?.Invoke(this, battleEvent));
     }
 
-    public async Task EnsureConnectedAsync(CancellationToken cancellationToken = default)
-    {
-        if (_hubConnection.State == HubConnectionState.Connected)
-        {
+    public async Task EnsureConnectedAsync(CancellationToken cancellationToken = default) {
+        if (_hubConnection.State == HubConnectionState.Connected) {
             return;
         }
 
         await _hubConnection.StartAsync(cancellationToken);
     }
 
-    public async Task JoinBattleAsync(string battleId, CancellationToken cancellationToken = default)
-    {
+    public async Task JoinBattleAsync(string battleId, CancellationToken cancellationToken = default) {
         ArgumentException.ThrowIfNullOrWhiteSpace(battleId);
         await EnsureConnectedAsync(cancellationToken);
         await _hubConnection.InvokeAsync("JoinBattle", battleId, cancellationToken);
     }
 
-    public async ValueTask DisposeAsync()
-    {
+    public async ValueTask DisposeAsync() {
         await _hubConnection.DisposeAsync();
     }
 }

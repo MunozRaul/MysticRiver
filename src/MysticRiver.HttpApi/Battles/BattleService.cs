@@ -3,12 +3,10 @@ using MysticRiver.Domain;
 
 namespace MysticRiver.HttpApi.Battles;
 
-public sealed class BattleService(IBattleSessionStore battleSessionStore) : IBattleService
-{
+public sealed class BattleService(IBattleSessionStore battleSessionStore) : IBattleService {
     private readonly IBattleSessionStore _battleSessionStore = battleSessionStore;
 
-    public StartBattleResponse StartBattle(StartBattleRequest request)
-    {
+    public StartBattleResponse StartBattle(StartBattleRequest request) {
         ArgumentNullException.ThrowIfNull(request);
         var session = _battleSessionStore.Create(request);
 
@@ -17,23 +15,19 @@ public sealed class BattleService(IBattleSessionStore battleSessionStore) : IBat
             MapState(session));
     }
 
-    public BattleStateDto ExecuteBasicAttack(string battleId, ExecuteBasicAttackRequest request)
-    {
+    public BattleStateDto ExecuteBasicAttack(string battleId, ExecuteBasicAttackRequest request) {
         ArgumentException.ThrowIfNullOrWhiteSpace(battleId);
         ArgumentNullException.ThrowIfNull(request);
 
-        if (!_battleSessionStore.TryGet(battleId, out var session))
-        {
+        if (!_battleSessionStore.TryGet(battleId, out var session)) {
             throw new KeyNotFoundException($"Battle '{battleId}' was not found.");
         }
 
-        lock (session.SyncRoot)
-        {
+        lock (session.SyncRoot) {
             var attacker = session.GetRequiredCreature(request.AttackerId);
             var target = session.GetRequiredCreature(request.TargetId);
 
-            if (ReferenceEquals(attacker, target))
-            {
+            if (ReferenceEquals(attacker, target)) {
                 throw new ArgumentException("Attacker and target must be different creatures.");
             }
 
@@ -42,13 +36,11 @@ public sealed class BattleService(IBattleSessionStore battleSessionStore) : IBat
                 : session.Battle.Creature1;
             var counterTarget = attacker;
 
-            var attackMove = new DamageMove(request.Power, DamageKind.Physical)
-            {
+            var attackMove = new DamageMove(request.Power, DamageKind.Physical) {
                 Source = attacker,
                 Destination = target
             };
-            var counterMove = new DamageMove(session.EnemyAttackPower, DamageKind.Physical)
-            {
+            var counterMove = new DamageMove(session.EnemyAttackPower, DamageKind.Physical) {
                 Source = counterAttacker,
                 Destination = counterTarget
             };
@@ -60,8 +52,7 @@ public sealed class BattleService(IBattleSessionStore battleSessionStore) : IBat
         }
     }
 
-    private static BattleStateDto MapState(BattleSession session)
-    {
+    private static BattleStateDto MapState(BattleSession session) {
         var creature1Id = session.GetCreatureId(session.Battle.Creature1);
         var creature2Id = session.GetCreatureId(session.Battle.Creature2);
         var creature1 = MapCreature(session.Battle.Creature1, creature1Id);
@@ -79,8 +70,7 @@ public sealed class BattleService(IBattleSessionStore battleSessionStore) : IBat
             winnerId);
     }
 
-    private static BattleCreatureDto MapCreature(Creature creature, string creatureId)
-    {
+    private static BattleCreatureDto MapCreature(Creature creature, string creatureId) {
         return new BattleCreatureDto(
             creatureId,
             creature.Name,
