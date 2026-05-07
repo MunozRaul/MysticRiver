@@ -1,17 +1,17 @@
-﻿using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+
 using Npgsql;
+
 using Testcontainers.PostgreSql;
 
 namespace MysticRiver.IntegrationTests;
 
-public class PostgresTests : IntegrationTestBase
-{
+public class PostgresTests : IntegrationTestBase {
     private PostgreSqlContainer postgreSql = null!;
 
     [Fact]
-    public void Test1()
-    {
+    public void Test1() {
         var connStr = postgreSql.GetConnectionString();
 
         using var conn = new NpgsqlConnection(connStr);
@@ -25,8 +25,7 @@ public class PostgresTests : IntegrationTestBase
 
     public override ValueTask OnInitializeAsync(
         IServiceCollection services,
-        IConfigurationManager configuration)
-    {
+        IConfigurationManager configuration) {
         services.AddPostgreSqlContainer("postgres:18.3", builder => builder
             .WithDatabase("mysticriver")
             .WithUsername("mysticriver")
@@ -36,8 +35,7 @@ public class PostgresTests : IntegrationTestBase
         return ValueTask.CompletedTask;
     }
 
-    public override ValueTask AfterInitializeAsync(TestCtx ctx)
-    {
+    public override ValueTask AfterInitializeAsync(TestCtx ctx) {
         postgreSql = ctx.Services.GetRequiredService<PostgreSqlContainer>();
         return ValueTask.CompletedTask;
     }

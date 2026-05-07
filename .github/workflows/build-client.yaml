@@ -10,10 +10,19 @@ on:
         description: Semantic version to package (for example 0.4.0)
         required: true
         type: string
+      target_environment:
+        description: GitHub environment that provides CLIENT_API_BASE_URL
+        required: true
+        default: production
+        type: choice
+        options:
+          - staging
+          - production
 
 jobs:
   build-client:
     runs-on: windows-latest
+    environment: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.target_environment || 'production' }}
     permissions:
       contents: write
     env:
@@ -45,6 +54,19 @@ jobs:
 
       - name: Restore
         run: dotnet restore
+
+      - name: Configure client API base URL
+        shell: pwsh
+        run: |
+          $apiBaseUrl = "${{ vars.CLIENT_API_BASE_URL }}"
+          if ([string]::IsNullOrWhiteSpace($apiBaseUrl)) {
+            throw "Missing GitHub variable CLIENT_API_BASE_URL."
+          }
+
+          $path = "src/MysticRiver.Client/appsettings.json"
+          $json = Get-Content $path -Raw | ConvertFrom-Json
+          $json.ClientOptions.ApiBaseUrl = $apiBaseUrl
+          $json | ConvertTo-Json -Depth 10 | Set-Content $path -Encoding utf8
 
       - name: Publish WPF App
         shell: pwsh

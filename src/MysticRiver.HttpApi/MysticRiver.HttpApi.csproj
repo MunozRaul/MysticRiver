@@ -11,4 +11,9 @@
     <PackageReference Include="Scalar.AspNetCore" />
   </ItemGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="..\MysticRiver.Contracts\MysticRiver.Contracts.csproj" />
+    <ProjectReference Include="..\MysticRiver.Domain\MysticRiver.Domain.csproj" />
+  </ItemGroup>
+
 </Project>
