@@ -12,7 +12,11 @@ public sealed class Creature {
     public bool IsDead => CurrentHp <= 0;
     public int CurrentShield { get; private set; }
     public StatusEffect? Status { get; private set; }
-    // TODO: Crowd Control
+    public CrowdControlKind? CrowdControl { get; private set; }
+    public int CrowdControlTurnsRemaining { get; private set; }
+    public bool IsCrowdControlled => CrowdControl is not null;
+    public bool IsStunned => CrowdControl == CrowdControlKind.Stun;
+    public bool IsCrowdControlSilenced => CrowdControl == CrowdControlKind.Silence;
     private int statusTurnsRemaining;
 
     public Creature(
@@ -97,7 +101,6 @@ public sealed class Creature {
             StatusEffect.Paralysis => 2,
             StatusEffect.Sleep     => 2,
             StatusEffect.Freeze    => 1,
-            StatusEffect.Silence   => 2,
             _                      => 0
         };
     }
@@ -106,25 +109,6 @@ public sealed class Creature {
     {
         Status = null;
         statusTurnsRemaining = 0;
-    }
-
-    internal bool IsSilenced => Status == StatusEffect.Silence;
-
-    /// <summary>
-    /// Consumes one turn of the Silence status. Should be called once per turn the creature acts.
-    /// </summary>
-    internal void TickSilence()
-    {
-        if (Status != StatusEffect.Silence)
-        {
-            return;
-        }
-
-        statusTurnsRemaining--;
-        if (statusTurnsRemaining <= 0)
-        {
-            ClearStatus();
-        }
     }
 
     /// <summary>
@@ -175,5 +159,38 @@ public sealed class Creature {
         {
             TakeDamage(damage, DamageKind.Magical);
         }
+    }
+
+    /// <summary>
+    /// Applies crowd control effect for a number of turns. 
+    /// If the creature is already crowd controlled, the new effect and duration overwrite the old ones.
+    /// </summary>
+    /// <param name="cc"></param>
+    /// <param name="turns"></param>
+    public void ApplyCrowdControl(CrowdControlKind cc, int turns) {
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(turns);
+
+        CrowdControl = cc;
+        CrowdControlTurnsRemaining = turns;
+    }
+
+    /// <summary>
+    /// Decrements the crowd control duration by one. Called once per turn regardless of whether the creature acted.
+    /// Clears the effect when the duration reaches zero.
+    /// </summary>
+    internal void TickCrowdControl() {
+        if (!IsCrowdControlled) {
+            return;
+        }
+
+        CrowdControlTurnsRemaining--;
+        if (CrowdControlTurnsRemaining <= 0) {
+            ClearCrowdControl();
+        }
+    }
+
+    private void ClearCrowdControl() {
+        CrowdControl = null;
+        CrowdControlTurnsRemaining = 0;
     }
 }

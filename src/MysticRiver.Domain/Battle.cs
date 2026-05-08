@@ -98,7 +98,8 @@ public sealed class Battle {
         ApplyMoveIfPossible(first);
         ApplyMoveIfPossible(second);
 
-        // TODO: Tick CC after both moves resolve
+        Creature1.TickCrowdControl();
+        Creature2.TickCrowdControl();
 
         TryGetResult(out var outcome);
         return new TurnResult(
@@ -160,11 +161,12 @@ public sealed class Battle {
             return;
         }
 
-        if (actor.IsSilenced) {
-            actor.TickSilence();
-            if (IsManaMove(move)) {
-                return;
-            }
+        if (actor.IsStunned) {
+            return;
+        }
+
+        if (actor.IsCrowdControlSilenced && IsManaMove(move)) {
+            return;
         }
 
         ApplyMove(move);
@@ -222,10 +224,7 @@ public sealed class Battle {
                 break;
 
             case CrowdControlMove ccm:
-                if (ccm.CrowdControlType == CrowdControlKind.Silence) {
-                    ccm.Destination.ApplyStatus(StatusEffect.Silence);
-                }
-                // TODO: Implement Stun
+                ccm.Destination.ApplyCrowdControl(ccm.CrowdControlType, ccm.Turns);
                 break;
 
             default:
