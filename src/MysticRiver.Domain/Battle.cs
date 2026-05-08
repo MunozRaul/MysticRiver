@@ -6,7 +6,9 @@ public sealed class Battle {
 
     public bool IsOver => Creature1.IsDead || Creature2.IsDead;
 
-    public Battle(Creature creature1, Creature creature2) {
+    private readonly Func<double> _rollSkip;
+
+    public Battle(Creature creature1, Creature creature2, Func<double>? rollSkip = null) {
         ArgumentNullException.ThrowIfNull(creature1);
         ArgumentNullException.ThrowIfNull(creature2);
 
@@ -16,6 +18,36 @@ public sealed class Battle {
 
         Creature1 = creature1;
         Creature2 = creature2;
+        _rollSkip = rollSkip ?? Random.Shared.NextDouble;
+    }
+
+    /// <summary>
+    /// Applies damage from the attacker to the target.
+    /// Throws <see cref="InvalidOperationException"/> if the battle is already over.
+    /// </summary>
+    public void ExecuteAction(Creature attacker, Creature target, int damage)
+    {
+        if (IsOver)
+        {
+            throw new InvalidOperationException("No further turns are allowed: the battle is already over.");
+        }
+
+        if (attacker != Creature1 && attacker != Creature2)
+        {
+            throw new ArgumentException("Attacker does not belong to this battle.", nameof(attacker));
+        }
+
+        if (target != Creature1 && target != Creature2)
+        {
+            throw new ArgumentException("Target does not belong to this battle.", nameof(target));
+        }
+
+        if (attacker == target)
+        {
+            throw new ArgumentException("Attacker and target must be different creatures.", nameof(target));
+        }
+
+        target.TakeDamage(damage);
     }
 
     /// <summary>
@@ -56,16 +88,25 @@ public sealed class Battle {
             throw new ArgumentException("Each move must have a different actor.");
         }
 
+        // Tick status effects before resolving actions so effects apply on subsequent turns.
+        Creature1.ApplyEndOfTurnEffects();
+        if (!IsOver) {
+            Creature2.ApplyEndOfTurnEffects();
+        }
+
         var (first, second) = DetermineMoveOrder(a, b);
         ApplyMoveIfPossible(first);
         ApplyMoveIfPossible(second);
 
-        // TODO: Tick CC after both moves resolve
+        Creature1.TickCrowdControl();
+        Creature2.TickCrowdControl();
 
         TryGetResult(out var outcome);
         return new TurnResult(
             creature1Hp: Creature1.CurrentHp,
             creature2Hp: Creature2.CurrentHp,
+            creature1Status: Creature1.Status,
+            creature2Status: Creature2.Status,
             finalResult: outcome
         );
     }
@@ -111,15 +152,28 @@ public sealed class Battle {
     }
 
     private void ApplyMoveIfPossible(Move move) {
-        if (IsOver || GetActor(move).IsDead) {
+        var actor = GetActor(move);
+        if (IsOver || actor.IsDead) {
             return;
         }
 
-        // TODO: stun skips entire move
-        // TODO: silence blocks mana spending moves
+        if (actor.ConsumeStatusSkip(_rollSkip)) {
+            return;
+        }
+
+        if (actor.IsStunned) {
+            return;
+        }
+
+        if (actor.IsCrowdControlSilenced && IsManaMove(move)) {
+            return;
+        }
 
         ApplyMove(move);
     }
+
+    private static bool IsManaMove(Move move) =>
+        move is HealMove or ShieldMove or ManaBurnMove or ManaDrainMove;
 
     private static void ApplyMove(Move move) {
         switch (move) {
@@ -162,8 +216,15 @@ public sealed class Battle {
                 }
                 break;
 
+            case StatusDamageMove sdm:
+                sdm.Destination.TakeDamage(sdm.DamageAmount, sdm.Kind);
+                if (!sdm.Destination.IsDead) {
+                    sdm.Destination.ApplyStatus(sdm.Effect);
+                }
+                break;
+
             case CrowdControlMove ccm:
-                // TODO: Implement crowd control effects...
+                ccm.Destination.ApplyCrowdControl(ccm.CrowdControlType, ccm.Turns);
                 break;
 
             default:

@@ -30,6 +30,7 @@ public sealed record ManaRestoreMove(int ManaAmount) : SelfMove;
 public sealed record DamageMove(int DamageAmount, DamageKind Kind) : TargetedMove;
 public sealed record ManaDrainMove(int ManaAmount) : TargetedMove;
 public sealed record ResistanceShredMove(int FlatShred, DamageKind Kind) : TargetedMove;
+public sealed record StatusDamageMove(int DamageAmount, DamageKind Kind, StatusEffect Effect) : TargetedMove;
 public sealed record CrowdControlMove(int Turns, CrowdControlKind CrowdControlType) : TargetedMove;
 
 /*
