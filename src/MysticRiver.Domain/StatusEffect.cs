@@ -7,5 +7,6 @@ public enum StatusEffect
     Paralysis,
     Sleep,
     Freeze,
-    Toxic
+    Toxic,
+    Silence
 }

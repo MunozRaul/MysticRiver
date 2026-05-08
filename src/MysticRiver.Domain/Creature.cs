@@ -97,6 +97,7 @@ public sealed class Creature {
             StatusEffect.Paralysis => 2,
             StatusEffect.Sleep     => 2,
             StatusEffect.Freeze    => 1,
+            StatusEffect.Silence   => 2,
             _                      => 0
         };
     }
@@ -105,6 +106,25 @@ public sealed class Creature {
     {
         Status = null;
         statusTurnsRemaining = 0;
+    }
+
+    internal bool IsSilenced => Status == StatusEffect.Silence;
+
+    /// <summary>
+    /// Consumes one turn of the Silence status. Should be called once per turn the creature acts.
+    /// </summary>
+    internal void TickSilence()
+    {
+        if (Status != StatusEffect.Silence)
+        {
+            return;
+        }
+
+        statusTurnsRemaining--;
+        if (statusTurnsRemaining <= 0)
+        {
+            ClearStatus();
+        }
     }
 
     /// <summary>

@@ -379,4 +379,110 @@ public class StatusEffectTests
 
         Assert.Equal(90, p1.CurrentHp); // p2 attacked in turn 2
     }
+
+    // ── Silence: blocks mana-spending moves for 2 turns ──────────────────────
+
+    private static CrowdControlMove SilenceMove(Creature source, Creature destination) =>
+        new(2, CrowdControlKind.Silence) { Source = source, Destination = destination };
+
+    [Fact]
+    public void Silence_AppliedViaCrowdControlMove_SetsSilenceStatus()
+    {
+        var p1 = new Creature("p1", 100, 20);
+        var p2 = new Creature("p2", 100, 10);
+        var battle = new Battle(p1, p2);
+
+        battle.ExecuteTurn(
+            SilenceMove(p1, p2),
+            Attack(p2, p1, 10));
+
+        Assert.Equal(StatusEffect.Silence, p2.Status);
+    }
+
+    [Fact]
+    public void Silence_BlocksHealMove()
+    {
+        var p1 = new Creature("p1", 100, 20);
+        var p2 = new Creature("p2", 100, 10);
+        var battle = new Battle(p1, p2);
+
+        // Turn 1: damage p2
+        battle.ExecuteTurn(
+            Attack(p1, p2, 30),
+            Attack(p2, p1, 1));
+
+        Assert.Equal(70, p2.CurrentHp);
+
+        // Turn 2: p1 silences p2; p2 tries to heal — blocked
+        battle.ExecuteTurn(
+            SilenceMove(p1, p2),
+            new HealMove(50, 10) { Self = p2 });
+
+        Assert.Equal(70, p2.CurrentHp); // heal was blocked
+    }
+
+    [Fact]
+    public void Silence_BlocksShieldMove()
+    {
+        var p1 = new Creature("p1", 100, 20);
+        var p2 = new Creature("p2", 100, 10);
+        var battle = new Battle(p1, p2);
+
+        // Turn 1: silence p2; p2 tries to apply a shield — blocked
+        battle.ExecuteTurn(
+            SilenceMove(p1, p2),
+            new ShieldMove(50, 10) { Self = p2 });
+
+        // Turn 2: attack p2 — no shield absorbed because ShieldMove was blocked
+        battle.ExecuteTurn(
+            Attack(p1, p2, 20),
+            Attack(p2, p1, 10));
+
+        Assert.Equal(80, p2.CurrentHp); // 100 - 20, no shield
+    }
+
+    [Fact]
+    public void Silence_AllowsNonManaMoves()
+    {
+        var p1 = new Creature("p1", 100, 20);
+        var p2 = new Creature("p2", 100, 10);
+        var battle = new Battle(p1, p2);
+
+        // Turn 1: silence p2; p2 uses a basic attack (no mana cost) — should still work
+        battle.ExecuteTurn(
+            SilenceMove(p1, p2),
+            Attack(p2, p1, 10));
+
+        Assert.Equal(90, p1.CurrentHp); // p2's attack landed
+    }
+
+    [Fact]
+    public void Silence_ClearsAfterTwoTurns()
+    {
+        var p1 = new Creature("p1", 100, 20);
+        var p2 = new Creature("p2", 100, 10);
+        var battle = new Battle(p1, p2);
+
+        // Turn 1: silence applied; tick 1/2
+        battle.ExecuteTurn(
+            SilenceMove(p1, p2),
+            Attack(p2, p1, 1));
+
+        Assert.Equal(StatusEffect.Silence, p2.Status);
+
+        // Turn 2: tick 2/2 → silence clears
+        battle.ExecuteTurn(
+            Attack(p1, p2, 1),
+            Attack(p2, p1, 1));
+
+        Assert.Null(p2.Status);
+
+        // Turn 3: p2 can heal freely
+        var p2HpBeforeHeal = p2.CurrentHp;
+        battle.ExecuteTurn(
+            Attack(p1, p2, 1),
+            new HealMove(20, 10) { Self = p2 });
+
+        Assert.True(p2.CurrentHp > p2HpBeforeHeal - 1); // heal applied
+    }
 }

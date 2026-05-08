@@ -160,10 +160,18 @@ public sealed class Battle {
             return;
         }
 
-        // TODO: silence blocks mana spending moves
+        if (actor.IsSilenced) {
+            actor.TickSilence();
+            if (IsManaMove(move)) {
+                return;
+            }
+        }
 
         ApplyMove(move);
     }
+
+    private static bool IsManaMove(Move move) =>
+        move is HealMove or ShieldMove or ManaBurnMove or ManaDrainMove;
 
     private static void ApplyMove(Move move) {
         switch (move) {
@@ -214,7 +222,10 @@ public sealed class Battle {
                 break;
 
             case CrowdControlMove ccm:
-                // TODO: Implement crowd control effects...
+                if (ccm.CrowdControlType == CrowdControlKind.Silence) {
+                    ccm.Destination.ApplyStatus(StatusEffect.Silence);
+                }
+                // TODO: Implement Stun
                 break;
 
             default:
