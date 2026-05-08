@@ -15,12 +15,15 @@ public class StatusEffectTests
         return (new Battle(p1, p2), p1, p2);
     }
 
+<<<<<<< HEAD
     private static DamageMove Attack(Creature source, Creature destination, int damage) =>
         new(damage, DamageKind.Physical) { Source = source, Destination = destination };
 
     private static StatusDamageMove StatusAttack(Creature source, Creature destination, int damage, StatusEffect effect) =>
         new(damage, DamageKind.Physical, effect) { Source = source, Destination = destination };
 
+=======
+>>>>>>> 43c789db65e4c0cd13f0450389424740910b442e
     // ── ApplyStatus ──────────────────────────────────────────────────────────
 
     [Fact]
@@ -71,6 +74,7 @@ public class StatusEffectTests
         var p1 = new Creature("Creature1", 100, 10);
         var p2 = new Creature("Creature2", 100, 10);
 
+<<<<<<< HEAD
         var move = StatusAttack(p1, p2, 20, StatusEffect.Poison);
 
         Assert.Equal(StatusEffect.Poison, move.Effect);
@@ -78,13 +82,28 @@ public class StatusEffectTests
 
     [Fact]
     public void BasicAttack_Move_IsDamageMove()
+=======
+        var move = Move.StatusAttack(p1, p2, 20, StatusEffect.Poison);
+
+        Assert.Equal(StatusEffect.Poison, move.InflictedStatus);
+    }
+
+    [Fact]
+    public void BasicAttack_Move_HasNullInflictedStatus()
+>>>>>>> 43c789db65e4c0cd13f0450389424740910b442e
     {
         var p1 = new Creature("Creature1", 100, 10);
         var p2 = new Creature("Creature2", 100, 10);
 
+<<<<<<< HEAD
         var move = Attack(p1, p2, 20);
 
         Assert.Equal(20, move.DamageAmount);
+=======
+        var move = Move.BasicAttack(p1, p2, 20);
+
+        Assert.Null(move.InflictedStatus);
+>>>>>>> 43c789db65e4c0cd13f0450389424740910b442e
     }
 
     // ── Status applied during battle turn ────────────────────────────────────
@@ -94,8 +113,13 @@ public class StatusEffectTests
     {
         var (battle, p1, p2) = CreateBattle();
 
+<<<<<<< HEAD
         var statusMove = StatusAttack(p1, p2, 10, StatusEffect.Poison);
         var normalMove = Attack(p2, p1, 10);
+=======
+        var statusMove = Move.StatusAttack(p1, p2, 10, StatusEffect.Poison);
+        var normalMove = Move.BasicAttack(p2, p1, 10);
+>>>>>>> 43c789db65e4c0cd13f0450389424740910b442e
 
         battle.ExecuteTurn(statusMove, normalMove);
 
@@ -107,8 +131,13 @@ public class StatusEffectTests
     {
         var (battle, p1, p2) = CreateBattle();
 
+<<<<<<< HEAD
         var move1 = Attack(p1, p2, 10);
         var move2 = Attack(p2, p1, 10);
+=======
+        var move1 = Move.BasicAttack(p1, p2, 10);
+        var move2 = Move.BasicAttack(p2, p1, 10);
+>>>>>>> 43c789db65e4c0cd13f0450389424740910b442e
 
         battle.ExecuteTurn(move1, move2);
 
@@ -120,8 +149,13 @@ public class StatusEffectTests
     {
         var (battle, p1, p2) = CreateBattle(hp1: 100, hp2: 10);
 
+<<<<<<< HEAD
         var killMove = StatusAttack(p1, p2, 10, StatusEffect.Poison);
         var normalMove = Attack(p2, p1, 5);
+=======
+        var killMove = Move.StatusAttack(p1, p2, 10, StatusEffect.Poison);
+        var normalMove = Move.BasicAttack(p2, p1, 5);
+>>>>>>> 43c789db65e4c0cd13f0450389424740910b442e
 
         battle.ExecuteTurn(killMove, normalMove);
 
@@ -138,15 +172,25 @@ public class StatusEffectTests
 
         // Turn 1: p1 attacks p2 for 1 → p2 HP = 99; poison applied
         battle.ExecuteTurn(
+<<<<<<< HEAD
             StatusAttack(p1, p2, 1, StatusEffect.Poison),
             Attack(p2, p1, 1));
+=======
+            Move.StatusAttack(p1, p2, 1, StatusEffect.Poison),
+            Move.BasicAttack(p2, p1, 1));
+>>>>>>> 43c789db65e4c0cd13f0450389424740910b442e
 
         Assert.Equal(StatusEffect.Poison, p2.Status);
 
         // Turn 2: poison tick = MaxHp/8 = 12; p1 attacks for 1 → p2 HP = 99 - 12 - 1 = 86
         battle.ExecuteTurn(
+<<<<<<< HEAD
             Attack(p1, p2, 1),
             Attack(p2, p1, 1));
+=======
+            Move.BasicAttack(p1, p2, 1),
+            Move.BasicAttack(p2, p1, 1));
+>>>>>>> 43c789db65e4c0cd13f0450389424740910b442e
 
         Assert.Equal(86, p2.CurrentHp);
     }
@@ -158,6 +202,7 @@ public class StatusEffectTests
 
         // Turn 1: p1 attacks p2 for 1 → p2 HP = 99; burn applied
         battle.ExecuteTurn(
+<<<<<<< HEAD
             StatusAttack(p1, p2, 1, StatusEffect.Burn),
             Attack(p2, p1, 1));
 
@@ -165,6 +210,15 @@ public class StatusEffectTests
         battle.ExecuteTurn(
             Attack(p1, p2, 1),
             Attack(p2, p1, 1));
+=======
+            Move.StatusAttack(p1, p2, 1, StatusEffect.Burn),
+            Move.BasicAttack(p2, p1, 1));
+
+        // Turn 2: burn tick = MaxHp/16 = 6; p1 attacks for 1 → p2 HP = 99 - 6 - 1 = 92
+        battle.ExecuteTurn(
+            Move.BasicAttack(p1, p2, 1),
+            Move.BasicAttack(p2, p1, 1));
+>>>>>>> 43c789db65e4c0cd13f0450389424740910b442e
 
         Assert.Equal(92, p2.CurrentHp);
     }
@@ -176,15 +230,25 @@ public class StatusEffectTests
 
         // Turn 1: no status
         battle.ExecuteTurn(
+<<<<<<< HEAD
             Attack(p1, p2, 1),
             Attack(p2, p1, 1));
+=======
+            Move.BasicAttack(p1, p2, 1),
+            Move.BasicAttack(p2, p1, 1));
+>>>>>>> 43c789db65e4c0cd13f0450389424740910b442e
 
         var hpAfterTurn1 = p2.CurrentHp; // 99
 
         // Turn 2: no status tick expected
         battle.ExecuteTurn(
+<<<<<<< HEAD
             Attack(p1, p2, 1),
             Attack(p2, p1, 1));
+=======
+            Move.BasicAttack(p1, p2, 1),
+            Move.BasicAttack(p2, p1, 1));
+>>>>>>> 43c789db65e4c0cd13f0450389424740910b442e
 
         // only 1 attack damage, no tick
         Assert.Equal(hpAfterTurn1 - 1, p2.CurrentHp);
@@ -197,15 +261,25 @@ public class StatusEffectTests
 
         // Turn 1: apply paralysis
         battle.ExecuteTurn(
+<<<<<<< HEAD
             StatusAttack(p1, p2, 1, StatusEffect.Paralysis),
             Attack(p2, p1, 1));
+=======
+            Move.StatusAttack(p1, p2, 1, StatusEffect.Paralysis),
+            Move.BasicAttack(p2, p1, 1));
+>>>>>>> 43c789db65e4c0cd13f0450389424740910b442e
 
         var hpAfterTurn1 = p2.CurrentHp; // 99
 
         // Turn 2: paralysis has no HP tick
         battle.ExecuteTurn(
+<<<<<<< HEAD
             Attack(p1, p2, 1),
             Attack(p2, p1, 1));
+=======
+            Move.BasicAttack(p1, p2, 1),
+            Move.BasicAttack(p2, p1, 1));
+>>>>>>> 43c789db65e4c0cd13f0450389424740910b442e
 
         // only 1 attack damage, no tick
         Assert.Equal(hpAfterTurn1 - 1, p2.CurrentHp);
@@ -219,8 +293,13 @@ public class StatusEffectTests
         var (battle, p1, p2) = CreateBattle();
 
         var result = battle.ExecuteTurn(
+<<<<<<< HEAD
             StatusAttack(p1, p2, 10, StatusEffect.Poison),
             Attack(p2, p1, 10));
+=======
+            Move.StatusAttack(p1, p2, 10, StatusEffect.Poison),
+            Move.BasicAttack(p2, p1, 10));
+>>>>>>> 43c789db65e4c0cd13f0450389424740910b442e
 
         Assert.Equal(StatusEffect.Poison, result.Creature2Status);
         Assert.Null(result.Creature1Status);
@@ -232,8 +311,13 @@ public class StatusEffectTests
         var (battle, p1, p2) = CreateBattle();
 
         var result = battle.ExecuteTurn(
+<<<<<<< HEAD
             Attack(p1, p2, 10),
             Attack(p2, p1, 10));
+=======
+            Move.BasicAttack(p1, p2, 10),
+            Move.BasicAttack(p2, p1, 10));
+>>>>>>> 43c789db65e4c0cd13f0450389424740910b442e
 
         Assert.Null(result.Creature1Status);
         Assert.Null(result.Creature2Status);
