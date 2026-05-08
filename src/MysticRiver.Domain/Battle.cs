@@ -6,7 +6,9 @@ public sealed class Battle {
 
     public bool IsOver => Creature1.IsDead || Creature2.IsDead;
 
-    public Battle(Creature creature1, Creature creature2) {
+    private readonly Func<double> _rollSkip;
+
+    public Battle(Creature creature1, Creature creature2, Func<double>? rollSkip = null) {
         ArgumentNullException.ThrowIfNull(creature1);
         ArgumentNullException.ThrowIfNull(creature2);
 
@@ -16,6 +18,7 @@ public sealed class Battle {
 
         Creature1 = creature1;
         Creature2 = creature2;
+        _rollSkip = rollSkip ?? Random.Shared.NextDouble;
     }
 
     /// <summary>
@@ -148,11 +151,15 @@ public sealed class Battle {
     }
 
     private void ApplyMoveIfPossible(Move move) {
-        if (IsOver || GetActor(move).IsDead) {
+        var actor = GetActor(move);
+        if (IsOver || actor.IsDead) {
             return;
         }
 
-        // TODO: stun skips entire move
+        if (actor.ConsumeStatusSkip(_rollSkip)) {
+            return;
+        }
+
         // TODO: silence blocks mana spending moves
 
         ApplyMove(move);

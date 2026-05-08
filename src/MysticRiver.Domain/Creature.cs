@@ -13,6 +13,7 @@ public sealed class Creature {
     public int CurrentShield { get; private set; }
     public StatusEffect? Status { get; private set; }
     // TODO: Crowd Control
+    private int statusTurnsRemaining;
 
     public Creature(
         string name,
@@ -57,6 +58,11 @@ public sealed class Creature {
         actualDamage -= shieldAbsorb;
 
         CurrentHp = Math.Max(0, CurrentHp - actualDamage);
+
+        if (actualDamage > 0 && Status == StatusEffect.Sleep)
+        {
+            ClearStatus();
+        }
     }
 
     public void Heal(int amount) {
@@ -83,9 +89,54 @@ public sealed class Creature {
         TakeDamage(amount, DamageKind.Physical);
     }
 
-    public void ApplyStatus(StatusEffect effect) => Status = effect;
+    public void ApplyStatus(StatusEffect effect)
+    {
+        Status = effect;
+        statusTurnsRemaining = effect switch
+        {
+            StatusEffect.Paralysis => 2,
+            StatusEffect.Sleep     => 2,
+            StatusEffect.Freeze    => 1,
+            _                      => 0
+        };
+    }
 
-    public void ClearStatus() => Status = null;
+    public void ClearStatus()
+    {
+        Status = null;
+        statusTurnsRemaining = 0;
+    }
+
+    /// <summary>
+    /// Returns <c>true</c> and consumes one turn of the disabling status when the creature
+    /// should skip its action this turn.  Freeze has a 15 % chance of skipping.
+    /// </summary>
+    internal bool ConsumeStatusSkip(Func<double> roll)
+    {
+        if (Status is null)
+        {
+            return false;
+        }
+
+        switch (Status.Value)
+        {
+            case StatusEffect.Paralysis:
+            case StatusEffect.Sleep:
+                statusTurnsRemaining--;
+                if (statusTurnsRemaining <= 0)
+                {
+                    ClearStatus();
+                }
+                return true;
+
+            case StatusEffect.Freeze:
+                ClearStatus();
+                return roll() < 0.15;
+
+            default:
+                return false;
+        }
+    }
 
     internal void ApplyEndOfTurnEffects()
     {

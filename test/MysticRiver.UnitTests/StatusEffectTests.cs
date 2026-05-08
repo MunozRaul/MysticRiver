@@ -237,4 +237,146 @@ public class StatusEffectTests
         Assert.Null(result.Creature1Status);
         Assert.Null(result.Creature2Status);
     }
+
+    // ── Paralysis: skips move for 2 turns ────────────────────────────────────
+
+    [Fact]
+    public void Paralysis_SkipsCreatureMove_ForTwoTurns()
+    {
+        // p1 has higher initiative so it always moves first
+        var p1 = new Creature("p1", 100, 20);
+        var p2 = new Creature("p2", 100, 10);
+        var battle = new Battle(p1, p2);
+
+        // Turn 1: p1 applies Paralysis then p2's move is consumed (skip 1/2)
+        battle.ExecuteTurn(
+            StatusAttack(p1, p2, 5, StatusEffect.Paralysis),
+            Attack(p2, p1, 10));
+
+        Assert.Equal(100, p1.CurrentHp); // p2 was skipped
+        Assert.Equal(95, p2.CurrentHp);
+        Assert.Equal(StatusEffect.Paralysis, p2.Status);
+
+        // Turn 2: second skip, Paralysis clears afterward
+        battle.ExecuteTurn(
+            Attack(p1, p2, 5),
+            Attack(p2, p1, 10));
+
+        Assert.Equal(100, p1.CurrentHp); // p2 was skipped again
+        Assert.Equal(90, p2.CurrentHp);
+        Assert.Null(p2.Status);
+
+        // Turn 3: p2 can act normally
+        battle.ExecuteTurn(
+            Attack(p1, p2, 5),
+            Attack(p2, p1, 10));
+
+        Assert.Equal(90, p1.CurrentHp); // p2 attacked
+        Assert.Equal(85, p2.CurrentHp);
+    }
+
+    // ── Sleep: skips move for 2 turns, wakes on damage ───────────────────────
+
+    [Fact]
+    public void Sleep_ClearsAfterTwoTurns_WhenNoDamageDealt()
+    {
+        var p1 = new Creature("p1", 100, 20);
+        var p2 = new Creature("p2", 100, 10);
+        var battle = new Battle(p1, p2);
+
+        // Turn 1: Sleep applied; p2's move skipped (skip 1/2)
+        battle.ExecuteTurn(
+            StatusAttack(p1, p2, 5, StatusEffect.Sleep),
+            Attack(p2, p1, 10));
+
+        Assert.Equal(StatusEffect.Sleep, p2.Status);
+        Assert.Equal(100, p1.CurrentHp);
+
+        // Turn 2: p1 restores mana (no damage to p2) so p2 stays asleep; skip 2/2
+        battle.ExecuteTurn(
+            new ManaRestoreMove(1) { Self = p1 },
+            Attack(p2, p1, 10));
+
+        Assert.Null(p2.Status);          // Sleep expired naturally
+        Assert.Equal(100, p1.CurrentHp); // p2 was still asleep
+    }
+
+    [Fact]
+    public void Sleep_WakesOnDamage_AllowingCreatureToActSameTurn()
+    {
+        var p1 = new Creature("p1", 100, 20);
+        var p2 = new Creature("p2", 100, 10);
+        var battle = new Battle(p1, p2);
+
+        // Turn 1: Sleep applied; p2's move skipped
+        battle.ExecuteTurn(
+            StatusAttack(p1, p2, 5, StatusEffect.Sleep),
+            Attack(p2, p1, 10));
+
+        Assert.Equal(StatusEffect.Sleep, p2.Status);
+
+        // Turn 2: p1 attacks p2 → p2 wakes up → p2 can act in the same turn
+        battle.ExecuteTurn(
+            Attack(p1, p2, 5),
+            Attack(p2, p1, 10));
+
+        Assert.Null(p2.Status);          // woke up from damage
+        Assert.Equal(90, p1.CurrentHp);  // p2 attacked after waking
+    }
+
+    // ── Freeze: 1-turn effect, 15 % chance to skip ───────────────────────────
+
+    [Fact]
+    public void Freeze_SkipsTurn_WhenRollBelow15Percent()
+    {
+        var p1 = new Creature("p1", 100, 20);
+        var p2 = new Creature("p2", 100, 10);
+        var battle = new Battle(p1, p2, rollSkip: () => 0.10);
+
+        // Turn 1: p1 applies Freeze; roll 0.10 < 0.15 → p2 skips
+        battle.ExecuteTurn(
+            StatusAttack(p1, p2, 5, StatusEffect.Freeze),
+            Attack(p2, p1, 10));
+
+        Assert.Equal(100, p1.CurrentHp); // p2 was frozen (skipped)
+        Assert.Null(p2.Status);           // Freeze always clears after one turn
+    }
+
+    [Fact]
+    public void Freeze_AllowsAction_WhenRollAtOrAbove15Percent()
+    {
+        var p1 = new Creature("p1", 100, 20);
+        var p2 = new Creature("p2", 100, 10);
+        var battle = new Battle(p1, p2, rollSkip: () => 0.50);
+
+        // Turn 1: p1 applies Freeze; roll 0.50 >= 0.15 → p2 still acts
+        battle.ExecuteTurn(
+            StatusAttack(p1, p2, 5, StatusEffect.Freeze),
+            Attack(p2, p1, 10));
+
+        Assert.Equal(90, p1.CurrentHp);  // p2 was not frozen (acted normally)
+        Assert.Null(p2.Status);           // Freeze always clears after one turn
+    }
+
+    [Fact]
+    public void Freeze_ClearsAfterOneTurn_WhenRollSkips()
+    {
+        var p1 = new Creature("p1", 100, 20);
+        var p2 = new Creature("p2", 100, 10);
+        var battle = new Battle(p1, p2, rollSkip: () => 0.10);
+
+        // Turn 1: Freeze applied and consumed (skip)
+        battle.ExecuteTurn(
+            StatusAttack(p1, p2, 5, StatusEffect.Freeze),
+            Attack(p2, p1, 10));
+
+        Assert.Null(p2.Status);
+
+        // Turn 2: p2 has no status, acts normally regardless of roll
+        battle.ExecuteTurn(
+            Attack(p1, p2, 5),
+            Attack(p2, p1, 10));
+
+        Assert.Equal(90, p1.CurrentHp); // p2 attacked in turn 2
+    }
 }
