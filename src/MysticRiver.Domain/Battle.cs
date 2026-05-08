@@ -170,6 +170,13 @@ public sealed class Battle {
                 }
                 break;
 
+            case StatusDamageMove sdm:
+                sdm.Destination.TakeDamage(sdm.DamageAmount, sdm.Kind);
+                if (!sdm.Destination.IsDead) {
+                    sdm.Destination.ApplyStatus(sdm.Effect);
+                }
+                break;
+
             case CrowdControlMove ccm:
                 // TODO: Implement crowd control effects...
                 break;
