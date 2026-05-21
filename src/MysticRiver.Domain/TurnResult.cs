@@ -8,6 +8,8 @@ public sealed class TurnResult {
     public int Creature2Hp { get; }
     public StatusEffect? Creature1Status { get; }
     public StatusEffect? Creature2Status { get; }
+    public CrowdControlKind? Creature1CrowdControl { get; }
+    public CrowdControlKind? Creature2CrowdControl { get; }
     public bool BattleEnded { get; }
     public BattleResult? FinalResult { get; }
 
@@ -19,6 +21,8 @@ public sealed class TurnResult {
         int creature2Hp,
         StatusEffect? creature1Status = null,
         StatusEffect? creature2Status = null,
+        CrowdControlKind? creature1CrowdControl = null,
+        CrowdControlKind? creature2CrowdControl = null,
         BattleResult? finalResult = null) {
         ArgumentOutOfRangeException.ThrowIfNegative(creature1Hp);
         ArgumentOutOfRangeException.ThrowIfNegative(creature2Hp);
@@ -27,6 +31,8 @@ public sealed class TurnResult {
         Creature2Hp = creature2Hp;
         Creature1Status = creature1Status;
         Creature2Status = creature2Status;
+        Creature1CrowdControl = creature1CrowdControl;
+        Creature2CrowdControl = creature2CrowdControl;
         FinalResult = finalResult;
         BattleEnded = finalResult is not null;
     }
