@@ -15,6 +15,10 @@ public class InitiativeAttackOrderTests {
 
     private static DamageMove Attack(Creature source, Creature destination, int damage) =>
         new DamageMove(damage, DamageKind.Physical) { Source = source, Destination = destination };
+    private static SelfStatusMove ApplyHaste(Creature self) =>
+        new SelfStatusMove(StatusEffect.Haste) { Self = self };
+    private static StatusEffectMove ApplySlow(Creature source, Creature destination) =>
+        new StatusEffectMove(StatusEffect.Slow) { Source = source, Destination = destination };
 
     [Fact]
     public void ExecuteTurn_HigherInitiativeAttacksFirst() {
@@ -74,6 +78,38 @@ public class InitiativeAttackOrderTests {
             Assert.Equal(resultA.FinalResult!.Winner, resultB.FinalResult!.Winner);
             Assert.Equal(resultA.FinalResult.Loser, resultB.FinalResult.Loser);
         }
+    }
+
+    [Fact]
+    public void ExecuteTurn_HasteRaisesInitiativeOnNextTurn() {
+        var (battle, p1, p2) = CreateBattle(hp1: 10, hp2: 10, initiative1: 10, initiative2: 10);
+
+        battle.ExecuteTurn(
+            Attack(p1, p2, 0),
+            ApplyHaste(p2));
+
+        battle.ExecuteTurn(
+            Attack(p1, p2, 10),
+            Attack(p2, p1, 10));
+
+        Assert.Equal(0, p1.CurrentHp);
+        Assert.Equal(10, p2.CurrentHp);
+    }
+
+    [Fact]
+    public void ExecuteTurn_SlowLowersInitiativeOnNextTurn() {
+        var (battle, p1, p2) = CreateBattle(hp1: 10, hp2: 10, initiative1: 10, initiative2: 6);
+
+        battle.ExecuteTurn(
+            Attack(p1, p2, 0),
+            ApplySlow(p2, p1));
+
+        battle.ExecuteTurn(
+            Attack(p1, p2, 10),
+            Attack(p2, p1, 10));
+
+        Assert.Equal(0, p1.CurrentHp);
+        Assert.Equal(10, p2.CurrentHp);
     }
 
     [Fact]

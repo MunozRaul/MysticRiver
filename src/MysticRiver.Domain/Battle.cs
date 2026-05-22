@@ -107,6 +107,8 @@ public sealed class Battle {
             creature2Hp: Creature2.CurrentHp,
             creature1Status: Creature1.Status,
             creature2Status: Creature2.Status,
+            creature1CrowdControl: Creature1.CrowdControl,
+            creature2CrowdControl: Creature2.CrowdControl,
             finalResult: outcome
         );
     }
@@ -139,11 +141,11 @@ public sealed class Battle {
         var actorA = GetActor(a);
         var actorB = GetActor(b);
 
-        if (actorA.Initiative > actorB.Initiative) {
+        if (actorA.EffectiveInitiative > actorB.EffectiveInitiative) {
             return (a, b);
         }
 
-        if (actorB.Initiative > actorA.Initiative) {
+        if (actorB.EffectiveInitiative > actorA.EffectiveInitiative) {
             return (b, a);
         }
 
@@ -173,12 +175,20 @@ public sealed class Battle {
     }
 
     private static bool IsManaMove(Move move) =>
-        move is HealMove or ShieldMove or ManaBurnMove or ManaDrainMove;
+        move is HealMove or ShieldMove or ManaBurnMove or ManaDrainMove
+            or DamageMove { ManaCost: > 0 }
+            or StatusDamageMove { ManaCost: > 0 }
+            or CrowdControlMove { ManaCost: > 0 }
+            or StatusEffectMove { ManaCost: > 0 }
+            or SelfStatusMove { ManaCost: > 0 }
+            or LifestealMove { ManaCost: > 0 };
 
     private static void ApplyMove(Move move) {
         switch (move) {
             case DamageMove dm:
-                dm.Destination.TakeDamage(dm.DamageAmount, dm.Kind);
+                if (dm.ManaCost == 0 || dm.Source.TryConsumeMana(dm.ManaCost)) {
+                    dm.Destination.TakeDamage(dm.DamageAmount, dm.Kind);
+                }
                 break;
 
             case HealMove hm:
@@ -217,14 +227,46 @@ public sealed class Battle {
                 break;
 
             case StatusDamageMove sdm:
-                sdm.Destination.TakeDamage(sdm.DamageAmount, sdm.Kind);
-                if (!sdm.Destination.IsDead) {
-                    sdm.Destination.ApplyStatus(sdm.Effect);
+                if (sdm.ManaCost == 0 || sdm.Source.TryConsumeMana(sdm.ManaCost)) {
+                    sdm.Destination.TakeDamage(sdm.DamageAmount, sdm.Kind);
+                    if (!sdm.Destination.IsDead) {
+                        sdm.Destination.ApplyStatus(sdm.Effect);
+                    }
                 }
                 break;
 
             case CrowdControlMove ccm:
-                ccm.Destination.ApplyCrowdControl(ccm.CrowdControlType, ccm.Turns);
+                if (ccm.ManaCost == 0 || ccm.Source.TryConsumeMana(ccm.ManaCost)) {
+                    ccm.Destination.ApplyCrowdControl(ccm.CrowdControlType, ccm.Turns);
+                }
+                break;
+
+            case LifestealMove lsm:
+                if (lsm.ManaCost == 0 || lsm.Source.TryConsumeMana(lsm.ManaCost)) {
+                    var initialHp = lsm.Destination.CurrentHp;
+                    lsm.Destination.TakeDamage(lsm.DamageAmount, lsm.Kind);
+                    var damageDealt = initialHp - lsm.Destination.CurrentHp;
+                    if (damageDealt > 0) {
+                        var healAmount = (int)Math.Round(damageDealt * lsm.HealRatio, MidpointRounding.AwayFromZero);
+                        lsm.Source.Heal(healAmount);
+                    }
+                }
+                break;
+
+            case StatusEffectMove sem:
+                if (sem.ManaCost == 0 || sem.Source.TryConsumeMana(sem.ManaCost)) {
+                    if (!sem.Destination.IsDead) {
+                        sem.Destination.ApplyStatus(sem.Effect);
+                    }
+                }
+                break;
+
+            case SelfStatusMove ssm:
+                if (ssm.ManaCost == 0 || ssm.Self.TryConsumeMana(ssm.ManaCost)) {
+                    if (!ssm.Self.IsDead) {
+                        ssm.Self.ApplyStatus(ssm.Effect);
+                    }
+                }
                 break;
 
             default:

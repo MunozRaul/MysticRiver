@@ -12,12 +12,15 @@ public sealed class Creature {
     public bool IsDead => CurrentHp <= 0;
     public int CurrentShield { get; private set; }
     public StatusEffect Status { get; private set; }
+    public int StatusTurnsRemaining { get; private set; }
+    public int StatusStacks { get; private set; }
     public CrowdControlKind CrowdControl { get; private set; }
     public int CrowdControlTurnsRemaining { get; private set; }
     public bool IsCrowdControlled => CrowdControl != CrowdControlKind.None;
     public bool IsStunned => CrowdControl.HasFlag(CrowdControlKind.Stun);
     public bool IsCrowdControlSilenced => CrowdControl.HasFlag(CrowdControlKind.Silence);
-    private int statusTurnsRemaining;
+    public int EffectiveInitiative => Math.Max(0, Initiative + GetInitiativeModifier());
+    private const int maxStatusStacks = 3;
 
     public Creature(
         string name,
@@ -95,20 +98,28 @@ public sealed class Creature {
 
     public void ApplyStatus(StatusEffect effect)
     {
+        var wasSameStatus = Status == effect;
+
         Status = effect;
-        statusTurnsRemaining = effect switch
+        StatusTurnsRemaining = GetDefaultStatusDuration(effect);
+
+        if (IsStackableStatus(effect))
         {
-            StatusEffect.Paralysis => 2,
-            StatusEffect.Sleep     => 2,
-            StatusEffect.Freeze    => 1,
-            _                      => 0
-        };
+            StatusStacks = wasSameStatus
+                ? Math.Min(maxStatusStacks, StatusStacks + 1)
+                : 1;
+        }
+        else
+        {
+            StatusStacks = 1;
+        }
     }
 
     public void ClearStatus()
     {
         Status = StatusEffect.None;
-        statusTurnsRemaining = 0;
+        StatusTurnsRemaining = 0;
+        StatusStacks = 0;
     }
 
     /// <summary>
@@ -124,8 +135,8 @@ public sealed class Creature {
 
         if (Status.HasFlag(StatusEffect.Paralysis) || Status.HasFlag(StatusEffect.Sleep))
         {
-            statusTurnsRemaining--;
-            if (statusTurnsRemaining <= 0)
+            StatusTurnsRemaining--;
+            if (StatusTurnsRemaining <= 0)
             {
                 ClearStatus();
             }
@@ -134,7 +145,11 @@ public sealed class Creature {
 
         if (Status.HasFlag(StatusEffect.Freeze))
         {
-            ClearStatus();
+            StatusTurnsRemaining--;
+            if (StatusTurnsRemaining <= 0)
+            {
+                ClearStatus();
+            }
             return roll() < 0.15;
         }
 
@@ -147,13 +162,29 @@ public sealed class Creature {
             return;
         }
 
-        var damage = 0;
-        if (Status.HasFlag(StatusEffect.Poison)) { damage += MaxHp / 8; }
-        if (Status.HasFlag(StatusEffect.Burn))   { damage += MaxHp / 16; }
-        if (Status.HasFlag(StatusEffect.Toxic))  { damage += MaxHp / 16; }
-        if (damage > 0)
+        if (IsDamageOverTimeStatus(Status))
         {
-            TakeDamage(damage, DamageKind.Magical);
+            var damage = GetStatusDamagePerStack(Status) * Math.Max(1, StatusStacks);
+            if (damage > 0)
+            {
+                TakeDamage(damage, DamageKind.Magical);
+            }
+
+            StatusTurnsRemaining--;
+            if (StatusTurnsRemaining <= 0)
+            {
+                ClearStatus();
+            }
+            return;
+        }
+
+        if (IsInitiativeStatus(Status))
+        {
+            StatusTurnsRemaining--;
+            if (StatusTurnsRemaining <= 0)
+            {
+                ClearStatus();
+            }
         }
     }
 
@@ -165,6 +196,11 @@ public sealed class Creature {
     /// <param name="turns"></param>
     public void ApplyCrowdControl(CrowdControlKind cc, int turns) {
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(turns);
+
+        if (CrowdControl == cc) {
+            CrowdControlTurnsRemaining = Math.Max(CrowdControlTurnsRemaining, turns);
+            return;
+        }
 
         CrowdControl = cc;
         CrowdControlTurnsRemaining = turns;
@@ -183,6 +219,67 @@ public sealed class Creature {
         if (CrowdControlTurnsRemaining <= 0) {
             ClearCrowdControl();
         }
+    }
+
+    private static int GetDefaultStatusDuration(StatusEffect effect)
+    {
+        return effect switch
+        {
+            StatusEffect.Paralysis => 2,
+            StatusEffect.Sleep => 2,
+            StatusEffect.Freeze => 1,
+            StatusEffect.Poison => 4,
+            StatusEffect.Burn => 3,
+            StatusEffect.Toxic => 4,
+            StatusEffect.Bleed => 3,
+            StatusEffect.Haste => 3,
+            StatusEffect.Slow => 3,
+            _ => throw new ArgumentOutOfRangeException(nameof(effect), effect, "Unknown status effect."),
+        };
+    }
+
+    private static bool IsStackableStatus(StatusEffect effect)
+    {
+        return effect is StatusEffect.Poison or StatusEffect.Burn or StatusEffect.Toxic or StatusEffect.Bleed;
+    }
+
+    private static bool IsDamageOverTimeStatus(StatusEffect effect)
+    {
+        return effect is StatusEffect.Poison or StatusEffect.Burn or StatusEffect.Toxic or StatusEffect.Bleed;
+    }
+
+    private static bool IsInitiativeStatus(StatusEffect effect)
+    {
+        return effect is StatusEffect.Haste or StatusEffect.Slow;
+    }
+
+    private int GetStatusDamagePerStack(StatusEffect effect)
+    {
+        return effect switch
+        {
+            StatusEffect.Poison => MaxHp / 8,
+            StatusEffect.Burn => MaxHp / 16,
+            StatusEffect.Toxic => MaxHp / 16,
+            StatusEffect.Bleed => MaxHp / 12,
+            _ => 0,
+        };
+    }
+
+    private int GetInitiativeModifier()
+    {
+        if (Status == StatusEffect.None)
+        {
+            return 0;
+        }
+
+        var stacks = Math.Max(1, StatusStacks);
+
+        return Status switch
+        {
+            StatusEffect.Haste => 5 * stacks,
+            StatusEffect.Slow => -5 * stacks,
+            _ => 0,
+        };
     }
 
     private void ClearCrowdControl() {

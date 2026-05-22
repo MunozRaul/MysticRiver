@@ -52,6 +52,33 @@ public class StatusEffectTests
     }
 
     [Fact]
+    public void ApplyStatus_ReapplyingStackableStatus_IncrementsStacksAndRefreshesDuration()
+    {
+        var creature = new Creature("Gruk", 100, 10);
+
+        creature.ApplyStatus(StatusEffect.Poison);
+        var duration = creature.StatusTurnsRemaining;
+
+        creature.ApplyStatus(StatusEffect.Poison);
+
+        Assert.Equal(2, creature.StatusStacks);
+        Assert.Equal(duration, creature.StatusTurnsRemaining);
+    }
+
+    [Fact]
+    public void ApplyStatus_DifferentStatus_ResetsStacks()
+    {
+        var creature = new Creature("Gruk", 100, 10);
+
+        creature.ApplyStatus(StatusEffect.Poison);
+        creature.ApplyStatus(StatusEffect.Poison);
+        creature.ApplyStatus(StatusEffect.Burn);
+
+        Assert.Equal(StatusEffect.Burn, creature.Status);
+        Assert.Equal(1, creature.StatusStacks);
+    }
+
+    [Fact]
     public void ClearStatus_ResetsStatusToNull()
     {
         var creature = new Creature("Gruk", 100, 10);
@@ -166,6 +193,24 @@ public class StatusEffectTests
             Attack(p2, p1, 1));
 
         Assert.Equal(92, p2.CurrentHp);
+    }
+
+    [Fact]
+    public void Bleed_TicksOnNextTurn_DealsEightPointThirtyThreePercentDamage()
+    {
+        var (battle, p1, p2) = CreateBattle(hp1: 100, hp2: 100);
+
+        // Turn 1: p1 attacks p2 for 1 → p2 HP = 99; bleed applied
+        battle.ExecuteTurn(
+            StatusAttack(p1, p2, 1, StatusEffect.Bleed),
+            Attack(p2, p1, 1));
+
+        // Turn 2: bleed tick = MaxHp/12 = 8; p1 attacks for 1 → p2 HP = 99 - 8 - 1 = 90
+        battle.ExecuteTurn(
+            Attack(p1, p2, 1),
+            Attack(p2, p1, 1));
+
+        Assert.Equal(90, p2.CurrentHp);
     }
 
     [Fact]
