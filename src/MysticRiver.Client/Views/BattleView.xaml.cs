@@ -1,3 +1,5 @@
+using System.Collections.ObjectModel;
+using System.Linq;
 using System.Net.Http;
 using System.Windows;
 using System.Windows.Controls;
@@ -10,12 +12,11 @@ using MysticRiver.Contracts.Battle;
 namespace MysticRiver.Client.Views;
 
 public partial class BattleView : UserControl {
+    private const string playerId = "player";
+    private const string enemyId = "enemy";
     private static readonly AbilityOption[] _placeholderAbilities =
     [
-        new("Basic Attack", true, new ExecuteBasicAttackRequest(
-            AttackerId: "player",
-            TargetId: "enemy",
-            Power: 20)),
+        new("Basic Attack", true, new ExecuteAbilityRequest("basic-attack")),
         new("Fireball", false, null),
         new("Ice Lance", false, null),
         new("Healing Light", false, null),
@@ -26,11 +27,12 @@ public partial class BattleView : UserControl {
 
     private readonly BattleApiClient _battleApiClient;
     private readonly BattleRealtimeClient _battleRealtimeClient;
+    private readonly ObservableCollection<AbilityOption> _abilities = new();
     private string? battleId;
     private bool isInitialized;
     private bool isAttackInProgress;
 
-    public IReadOnlyList<AbilityOption> Abilities { get; }
+    public IReadOnlyList<AbilityOption> Abilities => _abilities;
 
     public BattleView() {
         InitializeComponent();
@@ -38,7 +40,7 @@ public partial class BattleView : UserControl {
         _battleRealtimeClient = App.Services.GetRequiredService<BattleRealtimeClient>();
         _battleRealtimeClient.BattleStateUpdated += BattleRealtimeClient_BattleStateUpdated;
 
-        Abilities = CreatePlaceholderBattleAbilities();
+        SetAbilities(CreatePlaceholderBattleAbilities());
         DataContext = this;
     }
 
@@ -51,6 +53,7 @@ public partial class BattleView : UserControl {
         battleId = response.BattleId;
         ApplyState(response.State);
 
+        await LoadAbilitiesAsync();
         await _battleRealtimeClient.JoinBattleAsync(battleId);
         SetStatus("Connected. Real-time updates are active.");
         isInitialized = true;
@@ -63,7 +66,7 @@ public partial class BattleView : UserControl {
             return;
         }
 
-        if (!ability.IsEnabled || ability.AttackRequest is null) {
+        if (!ability.IsEnabled || ability.AbilityRequest is null) {
             SetStatus($"{ability.Label} is a placeholder and not wired yet.");
             return;
         }
@@ -74,9 +77,9 @@ public partial class BattleView : UserControl {
 
         try {
             isAttackInProgress = true;
-            SetStatus("Executing basic attack...");
+            SetStatus($"Executing {ability.Label}...");
 
-            var state = await _battleApiClient.ExecuteBasicAttackAsync(battleId, ability.AttackRequest);
+            var state = await _battleApiClient.ExecuteAbilityAsync(battleId, ability.AbilityRequest);
             ApplyState(state);
         }
         catch (HttpRequestException exception) {
@@ -151,8 +154,40 @@ public partial class BattleView : UserControl {
         return _placeholderAbilities;
     }
 
+    private async Task LoadAbilitiesAsync() {
+        try {
+            var abilities = await _battleApiClient.GetAbilitiesAsync();
+            if (abilities.Count == 0) {
+                SetStatus("No abilities are available from the server yet.");
+                return;
+            }
+
+            var options = abilities.Select(CreateAbilityOption).ToList();
+            SetAbilities(options);
+        }
+        catch (HttpRequestException exception) {
+            SetStatus($"Failed to load abilities: {exception.Message}");
+        }
+        catch (InvalidOperationException exception) {
+            SetStatus($"Failed to load abilities: {exception.Message}");
+        }
+    }
+
+    private static AbilityOption CreateAbilityOption(AbilityDefinitionDto ability) {
+        var targetId = ability.Target == AbilityTarget.Self ? playerId : enemyId;
+        var request = new ExecuteAbilityRequest(ability.Id, TargetId: targetId);
+        return new AbilityOption(ability.Name, true, request);
+    }
+
+    private void SetAbilities(IEnumerable<AbilityOption> abilities) {
+        _abilities.Clear();
+        foreach (var ability in abilities) {
+            _abilities.Add(ability);
+        }
+    }
+
     public sealed record AbilityOption(
         string Label,
         bool IsEnabled,
-        ExecuteBasicAttackRequest? AttackRequest);
+        ExecuteAbilityRequest? AbilityRequest);
 }
