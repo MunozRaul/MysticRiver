@@ -11,9 +11,7 @@ public sealed class Creature {
     public int MagicalResistance { get; set; }
     public bool IsDead => CurrentHp <= 0;
     public int CurrentShield { get; private set; }
-    public StatusEffect Status { get; private set; }
-    public int StatusTurnsRemaining { get; private set; }
-    public int StatusStacks { get; private set; }
+    public StatusEffect Status => GetStatusFlags();
     public CrowdControlKind CrowdControl { get; private set; }
     public int CrowdControlTurnsRemaining { get; private set; }
     public bool IsCrowdControlled => CrowdControl != CrowdControlKind.None;
@@ -21,6 +19,7 @@ public sealed class Creature {
     public bool IsCrowdControlSilenced => CrowdControl.HasFlag(CrowdControlKind.Silence);
     public int EffectiveInitiative => Math.Max(0, Initiative + GetInitiativeModifier());
     private const int maxStatusStacks = 3;
+    private readonly Dictionary<StatusEffect, StatusState> _statusStates = new();
 
     public Creature(
         string name,
@@ -66,9 +65,9 @@ public sealed class Creature {
 
         CurrentHp = Math.Max(0, CurrentHp - actualDamage);
 
-        if (actualDamage > 0 && Status.HasFlag(StatusEffect.Sleep))
+        if (actualDamage > 0 && HasStatus(StatusEffect.Sleep))
         {
-            ClearStatus();
+            RemoveStatus(StatusEffect.Sleep);
         }
     }
 
@@ -98,29 +97,47 @@ public sealed class Creature {
 
     public void ApplyStatus(StatusEffect effect)
     {
-        var wasSameStatus = Status == effect;
+        if (!IsSingleStatus(effect))
+        {
+            throw new ArgumentOutOfRangeException(nameof(effect), effect, "Status effect must be a single flag value.");
+        }
 
-        Status = effect;
-        StatusTurnsRemaining = GetDefaultStatusDuration(effect);
+        var defaultDuration = GetDefaultStatusDuration(effect);
+
+        if (!_statusStates.TryGetValue(effect, out var state))
+        {
+            _statusStates[effect] = new StatusState
+            {
+                Stacks = 1,
+                RemainingTurns = defaultDuration,
+            };
+            return;
+        }
 
         if (IsStackableStatus(effect))
         {
-            StatusStacks = wasSameStatus
-                ? Math.Min(maxStatusStacks, StatusStacks + 1)
-                : 1;
+            state.Stacks = Math.Min(maxStatusStacks, state.Stacks + 1);
         }
         else
         {
-            StatusStacks = 1;
+            state.Stacks = 1;
         }
+
+        state.RemainingTurns = Math.Max(state.RemainingTurns, defaultDuration);
     }
 
     public void ClearStatus()
     {
-        Status = StatusEffect.None;
-        StatusTurnsRemaining = 0;
-        StatusStacks = 0;
+        _statusStates.Clear();
     }
+
+    public bool HasStatus(StatusEffect effect) => _statusStates.ContainsKey(effect);
+
+    public int GetStatusStacks(StatusEffect effect) =>
+        _statusStates.TryGetValue(effect, out var state) ? state.Stacks : 0;
+
+    public int GetStatusTurnsRemaining(StatusEffect effect) =>
+        _statusStates.TryGetValue(effect, out var state) ? state.RemainingTurns : 0;
 
     /// <summary>
     /// Returns <c>true</c> and consumes one turn of the disabling status when the creature
@@ -128,69 +145,81 @@ public sealed class Creature {
     /// </summary>
     internal bool ConsumeStatusSkip(Func<double> roll)
     {
-        if (Status == StatusEffect.None)
+        if (_statusStates.Count == 0)
         {
             return false;
         }
 
-        if (Status.HasFlag(StatusEffect.Paralysis) || Status.HasFlag(StatusEffect.Sleep))
+        var skipped = false;
+
+        if (TryConsumeSkipStatus(StatusEffect.Paralysis))
         {
-            StatusTurnsRemaining--;
-            if (StatusTurnsRemaining <= 0)
-            {
-                ClearStatus();
-            }
-            return true;
+            skipped = true;
         }
 
-        if (Status.HasFlag(StatusEffect.Freeze))
+        if (TryConsumeSkipStatus(StatusEffect.Sleep))
         {
-            StatusTurnsRemaining--;
-            if (StatusTurnsRemaining <= 0)
-            {
-                ClearStatus();
-            }
-            return roll() < 0.15;
+            skipped = true;
         }
 
-        return false;
+        if (TryConsumeFreeze(roll))
+        {
+            skipped = true;
+        }
+
+        return skipped;
     }
 
     internal void ApplyEndOfTurnEffects()
     {
-        if (Status == StatusEffect.None) {
+        if (_statusStates.Count == 0) {
             return;
         }
 
-        if (IsDamageOverTimeStatus(Status))
+        var totalDamage = 0;
+        var toRemove = new List<StatusEffect>();
+
+        var snapshot = new List<KeyValuePair<StatusEffect, StatusState>>(_statusStates);
+        foreach (var entry in snapshot)
         {
-            var damage = GetStatusDamagePerStack(Status) * Math.Max(1, StatusStacks);
-            if (damage > 0)
+            var effect = entry.Key;
+            var state = entry.Value;
+
+            if (IsDamageOverTimeStatus(effect))
             {
-                TakeDamage(damage, DamageKind.Magical);
+                totalDamage += GetStatusDamagePerStack(effect) * Math.Max(1, state.Stacks);
+                state.RemainingTurns--;
+                if (state.RemainingTurns <= 0)
+                {
+                    toRemove.Add(effect);
+                }
+                continue;
             }
 
-            StatusTurnsRemaining--;
-            if (StatusTurnsRemaining <= 0)
+            if (IsInitiativeStatus(effect))
             {
-                ClearStatus();
+                state.RemainingTurns--;
+                if (state.RemainingTurns <= 0)
+                {
+                    toRemove.Add(effect);
+                }
             }
-            return;
         }
 
-        if (IsInitiativeStatus(Status))
+        if (totalDamage > 0)
         {
-            StatusTurnsRemaining--;
-            if (StatusTurnsRemaining <= 0)
-            {
-                ClearStatus();
-            }
+            TakeDamage(totalDamage, DamageKind.Magical);
+        }
+
+        foreach (var effect in toRemove)
+        {
+            RemoveStatus(effect);
         }
     }
 
     /// <summary>
-    /// Applies crowd control effect for a number of turns. 
-    /// If the creature is already crowd controlled, the new effect and duration overwrite the old ones.
+    /// Applies crowd control effect for a number of turns.
+    /// Reapplying the same effect refreshes the duration to the longer of the two; different effects overwrite.
     /// </summary>
     /// <param name="cc"></param>
     /// <param name="turns"></param>
@@ -219,6 +248,66 @@ public sealed class Creature {
         if (CrowdControlTurnsRemaining <= 0) {
             ClearCrowdControl();
         }
+    }
+
+    private bool TryConsumeSkipStatus(StatusEffect effect)
+    {
+        if (!_statusStates.TryGetValue(effect, out var state))
+        {
+            return false;
+        }
+
+        state.RemainingTurns--;
+        if (state.RemainingTurns <= 0)
+        {
+            RemoveStatus(effect);
+        }
+
+        return true;
+    }
+
+    private bool TryConsumeFreeze(Func<double> roll)
+    {
+        if (!_statusStates.TryGetValue(StatusEffect.Freeze, out var state))
+        {
+            return false;
+        }
+
+        var skipped = roll() < 0.15;
+        state.RemainingTurns--;
+        if (state.RemainingTurns <= 0)
+        {
+            RemoveStatus(StatusEffect.Freeze);
+        }
+
+        return skipped;
+    }
+
+    private void RemoveStatus(StatusEffect effect)
+    {
+        _statusStates.Remove(effect);
+    }
+
+    private StatusEffect GetStatusFlags()
+    {
+        var flags = StatusEffect.None;
+        foreach (var effect in _statusStates.Keys)
+        {
+            flags |= effect;
+        }
+
+        return flags;
+    }
+
+    private static bool IsSingleStatus(StatusEffect effect)
+    {
+        if (effect == StatusEffect.None)
+        {
+            return false;
+        }
+
+        var value = (int)effect;
+        return (value & (value - 1)) == 0;
     }
 
     private static int GetDefaultStatusDuration(StatusEffect effect)
@@ -267,23 +356,29 @@ public sealed class Creature {
 
     private int GetInitiativeModifier()
     {
-        if (Status == StatusEffect.None)
+        var modifier = 0;
+
+        if (_statusStates.TryGetValue(StatusEffect.Haste, out var haste))
         {
-            return 0;
+            modifier += 5 * Math.Max(1, haste.Stacks);
         }
 
-        var stacks = Math.Max(1, StatusStacks);
-
-        return Status switch
+        if (_statusStates.TryGetValue(StatusEffect.Slow, out var slow))
         {
-            StatusEffect.Haste => 5 * stacks,
-            StatusEffect.Slow => -5 * stacks,
-            _ => 0,
-        };
+            modifier -= 5 * Math.Max(1, slow.Stacks);
+        }
+
+        return modifier;
     }
 
     private void ClearCrowdControl() {
         CrowdControl = CrowdControlKind.None;
         CrowdControlTurnsRemaining = 0;
+    }
+
+    private sealed class StatusState
+    {
+        public int Stacks { get; set; }
+        public int RemainingTurns { get; set; }
     }
 }

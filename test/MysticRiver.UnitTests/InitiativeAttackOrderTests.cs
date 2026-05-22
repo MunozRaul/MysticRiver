@@ -126,4 +126,26 @@ public class InitiativeAttackOrderTests {
         Assert.False(creature.IsDead);
         Assert.Equal(100, creature.CurrentHp);
     }
+
+    [Fact]
+    public void EffectiveInitiative_HasteAndSlowCancelOut() {
+        var creature = new Creature("Gruk", 100, 10);
+
+        creature.ApplyStatus(StatusEffect.Haste);
+        creature.ApplyStatus(StatusEffect.Slow);
+
+        Assert.Equal(10, creature.EffectiveInitiative);
+    }
+
+    [Fact]
+    public void EffectiveInitiative_SlowAppliesAlongsideParalysis() {
+        var creature = new Creature("Gruk", 100, 10);
+
+        creature.ApplyStatus(StatusEffect.Paralysis);
+        creature.ApplyStatus(StatusEffect.Slow);
+
+        Assert.Equal(5, creature.EffectiveInitiative);
+        Assert.True(creature.Status.HasFlag(StatusEffect.Paralysis));
+        Assert.True(creature.Status.HasFlag(StatusEffect.Slow));
+    }
 }
