@@ -5,9 +5,11 @@ public enum DamageKind {
     Magical,
 }
 
+[Flags]
 public enum CrowdControlKind {
-    Silence,
-    Stun,
+    None    = 0,
+    Silence = 1,
+    Stun    = 2,
 }
 
 // marker so we can pattern match on targeted and self move later and treat it like a union
@@ -30,6 +32,7 @@ public sealed record ManaRestoreMove(int ManaAmount) : SelfMove;
 public sealed record DamageMove(int DamageAmount, DamageKind Kind) : TargetedMove;
 public sealed record ManaDrainMove(int ManaAmount) : TargetedMove;
 public sealed record ResistanceShredMove(int FlatShred, DamageKind Kind) : TargetedMove;
+public sealed record StatusDamageMove(int DamageAmount, DamageKind Kind, StatusEffect Effect) : TargetedMove;
 public sealed record CrowdControlMove(int Turns, CrowdControlKind CrowdControlType) : TargetedMove;
 
 /*

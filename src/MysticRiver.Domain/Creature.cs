@@ -11,7 +11,13 @@ public sealed class Creature {
     public int MagicalResistance { get; set; }
     public bool IsDead => CurrentHp <= 0;
     public int CurrentShield { get; private set; }
-    // TODO: Crowd Control
+    public StatusEffect Status { get; private set; }
+    public CrowdControlKind CrowdControl { get; private set; }
+    public int CrowdControlTurnsRemaining { get; private set; }
+    public bool IsCrowdControlled => CrowdControl != CrowdControlKind.None;
+    public bool IsStunned => CrowdControl.HasFlag(CrowdControlKind.Stun);
+    public bool IsCrowdControlSilenced => CrowdControl.HasFlag(CrowdControlKind.Silence);
+    private int statusTurnsRemaining;
 
     public Creature(
         string name,
@@ -56,6 +62,11 @@ public sealed class Creature {
         actualDamage -= shieldAbsorb;
 
         CurrentHp = Math.Max(0, CurrentHp - actualDamage);
+
+        if (actualDamage > 0 && Status.HasFlag(StatusEffect.Sleep))
+        {
+            ClearStatus();
+        }
     }
 
     public void Heal(int amount) {
@@ -75,5 +86,107 @@ public sealed class Creature {
     public void RestoreMana(int amount) {
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(amount);
         CurrentMana = Math.Min(MaxMana, CurrentMana + amount);
+    }
+
+    public void TakeDamage(int amount) {
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(amount);
+        TakeDamage(amount, DamageKind.Physical);
+    }
+
+    public void ApplyStatus(StatusEffect effect)
+    {
+        Status = effect;
+        statusTurnsRemaining = effect switch
+        {
+            StatusEffect.Paralysis => 2,
+            StatusEffect.Sleep     => 2,
+            StatusEffect.Freeze    => 1,
+            _                      => 0
+        };
+    }
+
+    public void ClearStatus()
+    {
+        Status = StatusEffect.None;
+        statusTurnsRemaining = 0;
+    }
+
+    /// <summary>
+    /// Returns <c>true</c> and consumes one turn of the disabling status when the creature
+    /// should skip its action this turn.  Freeze has a 15 % chance of skipping.
+    /// </summary>
+    internal bool ConsumeStatusSkip(Func<double> roll)
+    {
+        if (Status == StatusEffect.None)
+        {
+            return false;
+        }
+
+        if (Status.HasFlag(StatusEffect.Paralysis) || Status.HasFlag(StatusEffect.Sleep))
+        {
+            statusTurnsRemaining--;
+            if (statusTurnsRemaining <= 0)
+            {
+                ClearStatus();
+            }
+            return true;
+        }
+
+        if (Status.HasFlag(StatusEffect.Freeze))
+        {
+            ClearStatus();
+            return roll() < 0.15;
+        }
+
+        return false;
+    }
+
+    internal void ApplyEndOfTurnEffects()
+    {
+        if (Status == StatusEffect.None) {
+            return;
+        }
+
+        var damage = 0;
+        if (Status.HasFlag(StatusEffect.Poison)) { damage += MaxHp / 8; }
+        if (Status.HasFlag(StatusEffect.Burn))   { damage += MaxHp / 16; }
+        if (Status.HasFlag(StatusEffect.Toxic))  { damage += MaxHp / 16; }
+        if (damage > 0)
+        {
+            TakeDamage(damage, DamageKind.Magical);
+        }
+    }
+
+    /// <summary>
+    /// Applies crowd control effect for a number of turns. 
+    /// If the creature is already crowd controlled, the new effect and duration overwrite the old ones.
+    /// </summary>
+    /// <param name="cc"></param>
+    /// <param name="turns"></param>
+    public void ApplyCrowdControl(CrowdControlKind cc, int turns) {
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(turns);
+
+        CrowdControl = cc;
+        CrowdControlTurnsRemaining = turns;
+    }
+
+    /// <summary>
+    /// Decrements the crowd control duration by one. Called once per turn regardless of whether the creature acted.
+    /// Clears the effect when the duration reaches zero.
+    /// </summary>
+    internal void TickCrowdControl() {
+        if (!IsCrowdControlled) {
+            return;
+        }
+
+        CrowdControlTurnsRemaining--;
+        if (CrowdControlTurnsRemaining <= 0) {
+            ClearCrowdControl();
+        }
+    }
+
+    private void ClearCrowdControl() {
+        CrowdControl = CrowdControlKind.None;
+        CrowdControlTurnsRemaining = 0;
     }
 }
