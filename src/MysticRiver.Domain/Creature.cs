@@ -11,12 +11,12 @@ public sealed class Creature {
     public int MagicalResistance { get; set; }
     public bool IsDead => CurrentHp <= 0;
     public int CurrentShield { get; private set; }
-    public StatusEffect? Status { get; private set; }
-    public CrowdControlKind? CrowdControl { get; private set; }
+    public StatusEffect Status { get; private set; }
+    public CrowdControlKind CrowdControl { get; private set; }
     public int CrowdControlTurnsRemaining { get; private set; }
-    public bool IsCrowdControlled => CrowdControl is not null;
-    public bool IsStunned => CrowdControl == CrowdControlKind.Stun;
-    public bool IsCrowdControlSilenced => CrowdControl == CrowdControlKind.Silence;
+    public bool IsCrowdControlled => CrowdControl != CrowdControlKind.None;
+    public bool IsStunned => CrowdControl.HasFlag(CrowdControlKind.Stun);
+    public bool IsCrowdControlSilenced => CrowdControl.HasFlag(CrowdControlKind.Silence);
     private int statusTurnsRemaining;
 
     public Creature(
@@ -63,7 +63,7 @@ public sealed class Creature {
 
         CurrentHp = Math.Max(0, CurrentHp - actualDamage);
 
-        if (actualDamage > 0 && Status == StatusEffect.Sleep)
+        if (actualDamage > 0 && Status.HasFlag(StatusEffect.Sleep))
         {
             ClearStatus();
         }
@@ -107,7 +107,7 @@ public sealed class Creature {
 
     public void ClearStatus()
     {
-        Status = null;
+        Status = StatusEffect.None;
         statusTurnsRemaining = 0;
     }
 
@@ -117,44 +117,40 @@ public sealed class Creature {
     /// </summary>
     internal bool ConsumeStatusSkip(Func<double> roll)
     {
-        if (Status is null)
+        if (Status == StatusEffect.None)
         {
             return false;
         }
 
-        switch (Status.Value)
+        if (Status.HasFlag(StatusEffect.Paralysis) || Status.HasFlag(StatusEffect.Sleep))
         {
-            case StatusEffect.Paralysis:
-            case StatusEffect.Sleep:
-                statusTurnsRemaining--;
-                if (statusTurnsRemaining <= 0)
-                {
-                    ClearStatus();
-                }
-                return true;
-
-            case StatusEffect.Freeze:
+            statusTurnsRemaining--;
+            if (statusTurnsRemaining <= 0)
+            {
                 ClearStatus();
-                return roll() < 0.15;
-
-            default:
-                return false;
+            }
+            return true;
         }
+
+        if (Status.HasFlag(StatusEffect.Freeze))
+        {
+            ClearStatus();
+            return roll() < 0.15;
+        }
+
+        return false;
     }
 
     internal void ApplyEndOfTurnEffects()
     {
-        if (Status is null) {
+        if (Status == StatusEffect.None) {
             return;
         }
 
-        var damage = Status.Value switch
-        {
-            StatusEffect.Poison => MaxHp / 8,
-            StatusEffect.Burn   => MaxHp / 16,
-            StatusEffect.Toxic  => MaxHp / 16,
-            _                   => 0
-        };
+        var damage = 0;
+        if (Status.HasFlag(StatusEffect.Poison)) { damage += MaxHp / 8; }
+        if (Status.HasFlag(StatusEffect.Burn))   { damage += MaxHp / 16; }
+        if (Status.HasFlag(StatusEffect.Toxic))  { damage += MaxHp / 16; }
         if (damage > 0)
         {
             TakeDamage(damage, DamageKind.Magical);
@@ -190,7 +186,7 @@ public sealed class Creature {
     }
 
     private void ClearCrowdControl() {
-        CrowdControl = null;
+        CrowdControl = CrowdControlKind.None;
         CrowdControlTurnsRemaining = 0;
     }
 }
