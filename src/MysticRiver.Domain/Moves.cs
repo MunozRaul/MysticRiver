@@ -29,11 +29,26 @@ public sealed record ManaBurnMove(int ManaAmount) : SelfMove;
 public sealed record ShieldMove(int ShieldAmount, int ManaCost) : SelfMove;
 public sealed record ManaRestoreMove(int ManaAmount) : SelfMove;
 
-public sealed record DamageMove(int DamageAmount, DamageKind Kind) : TargetedMove;
+public sealed record DamageMove(int DamageAmount, DamageKind Kind) : TargetedMove {
+    public int ManaCost { get; init; }
+}
 public sealed record ManaDrainMove(int ManaAmount) : TargetedMove;
 public sealed record ResistanceShredMove(int FlatShred, DamageKind Kind) : TargetedMove;
-public sealed record StatusDamageMove(int DamageAmount, DamageKind Kind, StatusEffect Effect) : TargetedMove;
-public sealed record CrowdControlMove(int Turns, CrowdControlKind CrowdControlType) : TargetedMove;
+public sealed record StatusDamageMove(int DamageAmount, DamageKind Kind, StatusEffect Effect) : TargetedMove {
+    public int ManaCost { get; init; }
+}
+public sealed record CrowdControlMove(int Turns, CrowdControlKind CrowdControlType) : TargetedMove {
+    public int ManaCost { get; init; }
+}
+public sealed record LifestealMove(int DamageAmount, DamageKind Kind, double HealRatio) : TargetedMove {
+    public int ManaCost { get; init; }
+}
+public sealed record StatusEffectMove(StatusEffect Effect) : TargetedMove {
+    public int ManaCost { get; init; }
+}
+public sealed record SelfStatusMove(StatusEffect Effect) : SelfMove {
+    public int ManaCost { get; init; }
+}
 
 /*
     Maybe we also want...

@@ -172,4 +172,21 @@ public class CrowdControlTests
         Assert.Equal(CrowdControlKind.Stun, creature.CrowdControl);
         Assert.Equal(3, creature.CrowdControlTurnsRemaining);
     }
+
+    [Fact]
+    public void ApplyCrowdControl_ReapplyingSameEffect_RefreshesDuration()
+    {
+        var creature = new Creature("c", 100, 10);
+
+        creature.ApplyCrowdControl(CrowdControlKind.Silence, 2);
+        creature.ApplyCrowdControl(CrowdControlKind.Silence, 1);
+
+        Assert.Equal(CrowdControlKind.Silence, creature.CrowdControl);
+        Assert.Equal(2, creature.CrowdControlTurnsRemaining);
+
+        creature.ApplyCrowdControl(CrowdControlKind.Silence, 3);
+
+        Assert.Equal(CrowdControlKind.Silence, creature.CrowdControl);
+        Assert.Equal(3, creature.CrowdControlTurnsRemaining);
+    }
 }

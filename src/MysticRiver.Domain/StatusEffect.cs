@@ -9,5 +9,8 @@ public enum StatusEffect
     Paralysis = 4,
     Sleep     = 8,
     Freeze    = 16,
-    Toxic     = 32
+    Toxic     = 32,
+    Bleed     = 64,
+    Haste     = 128,
+    Slow      = 256
 }
