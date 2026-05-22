@@ -1,3 +1,5 @@
+using System;
+
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.SignalR;
 
@@ -46,55 +48,55 @@ public sealed class BattlesController(
         return Ok(abilities);
     }
 
-    [HttpPost("{battleId}/actions/basic-attack")]
-    public async Task<ActionResult<BattleStateDto>> ExecuteBasicAttack(string battleId, [FromBody] ExecuteBasicAttackRequest request) {
-        try {
-            var state = _battleService.ExecuteBasicAttack(battleId, request);
-            var battleEvent = new BattleStateUpdatedEvent(battleId, state);
+[HttpPost("{battleId}/actions/basic-attack")]
+public async Task<ActionResult<BattleStateDto>> ExecuteBasicAttack(string battleId, [FromBody] ExecuteBasicAttackRequest request) {
+    return await ExecuteBattleActionAsync(
+        battleId,
+        () => _battleService.ExecuteBasicAttack(battleId, request),
+        "Invalid attack request.");
+}
 
-            await _battleHubContext.Clients.Group(battleId).BattleStateUpdated(battleEvent);
-            return Ok(state);
-        }
-        catch (KeyNotFoundException exception) {
-            return NotFound(CreateProblem("Battle or creature not found.", exception.Message));
-        }
-        catch (InvalidOperationException exception) {
-            return BadRequest(CreateProblem("Battle action cannot be executed.", exception.Message));
-        }
-        catch (ArgumentException exception) {
-            return BadRequest(CreateProblem("Invalid attack request.", exception.Message));
-        }
-    }
+[HttpPost("{battleId}/actions/ability")]
+public async Task<ActionResult<BattleStateDto>> ExecuteAbility(string battleId, [FromBody] ExecuteAbilityRequest request)
+{
+    return await ExecuteBattleActionAsync(
+        battleId,
+        () => _battleService.ExecuteAbility(battleId, request),
+        "Invalid ability request.");
+}
 
-    [HttpPost("{battleId}/actions/ability")]
-    public async Task<ActionResult<BattleStateDto>> ExecuteAbility(string battleId, [FromBody] ExecuteAbilityRequest request)
+private static ProblemDetails CreateProblem(string title, string detail) {
+    return new ProblemDetails {
+        Title = title,
+        Detail = detail
+    };
+}
+
+private async Task<ActionResult<BattleStateDto>> ExecuteBattleActionAsync(
+    string battleId,
+    Func<BattleStateDto> action,
+    string invalidRequestTitle)
+{
+    try
     {
-        try
-        {
-            var state = _battleService.ExecuteAbility(battleId, request);
-            var battleEvent = new BattleStateUpdatedEvent(battleId, state);
+        var state = action();
+        var battleEvent = new BattleStateUpdatedEvent(battleId, state);
 
-            await _battleHubContext.Clients.Group(battleId).BattleStateUpdated(battleEvent);
-            return Ok(state);
-        }
-        catch (KeyNotFoundException exception)
-        {
-            return NotFound(CreateProblem("Battle or creature not found.", exception.Message));
-        }
-        catch (InvalidOperationException exception)
-        {
-            return BadRequest(CreateProblem("Battle action cannot be executed.", exception.Message));
-        }
-        catch (ArgumentException exception)
-        {
-            return BadRequest(CreateProblem("Invalid ability request.", exception.Message));
-        }
+        await _battleHubContext.Clients.Group(battleId).BattleStateUpdated(battleEvent);
+        return Ok(state);
     }
+    catch (KeyNotFoundException exception)
+    {
+        return NotFound(CreateProblem("Battle or creature not found.", exception.Message));
+    }
+    catch (InvalidOperationException exception)
+    {
+        return BadRequest(CreateProblem("Battle action cannot be executed.", exception.Message));
+    }
+    catch (ArgumentException exception)
+    {
+        return BadRequest(CreateProblem(invalidRequestTitle, exception.Message));
+    }
+}
 
-    private static ProblemDetails CreateProblem(string title, string detail) {
-        return new ProblemDetails {
-            Title = title,
-            Detail = detail
-        };
-    }
 }

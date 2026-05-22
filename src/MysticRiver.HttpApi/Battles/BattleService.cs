@@ -61,24 +61,11 @@ public sealed class BattleService(IBattleSessionStore battleSessionStore) : IBat
                 throw new ArgumentException("Attacker and target must be different creatures.");
             }
 
-            var counterAttacker = ReferenceEquals(attacker, session.Battle.Creature1)
-                ? session.Battle.Creature2
-                : session.Battle.Creature1;
-            var counterTarget = attacker;
-
             var attackMove = new DamageMove(request.Power, DamageKind.Physical) {
                 Source = attacker,
                 Destination = target
             };
-            var counterMove = new DamageMove(session.EnemyAttackPower, DamageKind.Physical) {
-                Source = counterAttacker,
-                Destination = counterTarget
-            };
-
-            _ = session.Battle.ExecuteTurn(attackMove, counterMove);
-            session.AdvanceRound();
-
-            return MapState(session);
+            return ExecuteTurnWithCounter(session, attacker, attackMove);
         }
     }
 
@@ -130,13 +117,7 @@ public sealed class BattleService(IBattleSessionStore battleSessionStore) : IBat
             }
 
             var move = ability.CreateMove(attacker, target);
-            var (counterAttacker, counterTarget) = GetCounterPair(session, attacker);
-            var counterMove = CreateCounterMove(session, counterAttacker, counterTarget);
-
-            _ = session.Battle.ExecuteTurn(move, counterMove);
-            session.AdvanceRound();
-
-            return MapState(session);
+            return ExecuteTurnWithCounter(session, attacker, move);
         }
     }
 
@@ -274,5 +255,16 @@ public sealed class BattleService(IBattleSessionStore battleSessionStore) : IBat
             Source = counterAttacker,
             Destination = counterTarget,
         };
+    }
+
+    private BattleStateDto ExecuteTurnWithCounter(BattleSession session, Creature attacker, Move move)
+    {
+        var (counterAttacker, counterTarget) = GetCounterPair(session, attacker);
+        var counterMove = CreateCounterMove(session, counterAttacker, counterTarget);
+
+        _ = session.Battle.ExecuteTurn(move, counterMove);
+        session.AdvanceRound();
+
+        return MapState(session);
     }
 }
