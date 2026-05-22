@@ -9,6 +9,7 @@ public sealed class BattleSession {
     public string BattleId { get; }
     public Battle Battle { get; }
     public int RoundNumber { get; private set; }
+    public int StateVersion { get; private set; }
     public int EnemyAttackPower { get; }
     public object SyncRoot => _syncRoot;
 
@@ -21,6 +22,7 @@ public sealed class BattleSession {
         Battle = battle;
         EnemyAttackPower = enemyAttackPower;
         RoundNumber = 1;
+        StateVersion = 1;
         _creaturesById = new Dictionary<string, Creature>(StringComparer.OrdinalIgnoreCase) {
             [BattleParticipantIds.Player] = battle.Creature1,
             [BattleParticipantIds.Enemy] = battle.Creature2
@@ -51,5 +53,6 @@ public sealed class BattleSession {
 
     public void AdvanceRound() {
         RoundNumber++;
+        StateVersion++;
     }
 }

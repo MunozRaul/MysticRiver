@@ -152,6 +152,7 @@ public sealed class BattleService(IBattleSessionStore battleSessionStore) : IBat
         return new BattleStateDto(
             session.BattleId,
             session.RoundNumber,
+            session.StateVersion,
             creature1,
             creature2,
             session.Battle.IsOver,
