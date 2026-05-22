@@ -1,5 +1,9 @@
 using MysticRiver.Contracts.Battle;
 using MysticRiver.Domain;
+using ContractCrowdControlKind = MysticRiver.Contracts.Battle.CrowdControlKind;
+using ContractStatusEffect = MysticRiver.Contracts.Battle.StatusEffect;
+using DomainCrowdControlKind = MysticRiver.Domain.CrowdControlKind;
+using DomainStatusEffect = MysticRiver.Domain.StatusEffect;
 
 namespace MysticRiver.HttpApi.Battles;
 
@@ -76,7 +80,71 @@ public sealed class BattleService(IBattleSessionStore battleSessionStore) : IBat
             creature.Name,
             creature.MaxHp,
             creature.CurrentHp,
+            creature.MaxMana,
+            creature.CurrentMana,
             creature.Initiative,
+            creature.CurrentShield,
+            GetStatusEffects(creature),
+            MapCrowdControl(creature.CrowdControl),
+            creature.CrowdControlTurnsRemaining,
             creature.IsDead);
+    }
+
+    private static IReadOnlyList<StatusEffectStateDto> GetStatusEffects(Creature creature)
+    {
+        var effects = new List<StatusEffectStateDto>();
+        foreach (var effect in Enum.GetValues<DomainStatusEffect>())
+        {
+            if (effect == DomainStatusEffect.None || !creature.HasStatus(effect))
+            {
+                continue;
+            }
+
+            effects.Add(new StatusEffectStateDto(
+                MapStatusEffect(effect),
+                creature.GetStatusStacks(effect),
+                creature.GetStatusTurnsRemaining(effect)));
+        }
+
+        return effects;
+    }
+
+    private static ContractStatusEffect MapStatusEffect(DomainStatusEffect effect)
+    {
+        return effect switch
+        {
+            DomainStatusEffect.Poison => ContractStatusEffect.Poison,
+            DomainStatusEffect.Burn => ContractStatusEffect.Burn,
+            DomainStatusEffect.Paralysis => ContractStatusEffect.Paralysis,
+            DomainStatusEffect.Sleep => ContractStatusEffect.Sleep,
+            DomainStatusEffect.Freeze => ContractStatusEffect.Freeze,
+            DomainStatusEffect.Toxic => ContractStatusEffect.Toxic,
+            DomainStatusEffect.Bleed => ContractStatusEffect.Bleed,
+            DomainStatusEffect.Haste => ContractStatusEffect.Haste,
+            DomainStatusEffect.Slow => ContractStatusEffect.Slow,
+            DomainStatusEffect.None => ContractStatusEffect.None,
+            _ => throw new ArgumentOutOfRangeException(nameof(effect), effect, "Unknown status effect."),
+        };
+    }
+
+    private static ContractCrowdControlKind MapCrowdControl(DomainCrowdControlKind crowdControl)
+    {
+        if (crowdControl == DomainCrowdControlKind.None)
+        {
+            return ContractCrowdControlKind.None;
+        }
+
+        var mapped = ContractCrowdControlKind.None;
+        if (crowdControl.HasFlag(DomainCrowdControlKind.Silence))
+        {
+            mapped |= ContractCrowdControlKind.Silence;
+        }
+
+        if (crowdControl.HasFlag(DomainCrowdControlKind.Stun))
+        {
+            mapped |= ContractCrowdControlKind.Stun;
+        }
+
+        return mapped;
     }
 }
