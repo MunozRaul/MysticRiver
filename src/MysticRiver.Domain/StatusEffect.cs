@@ -1,11 +1,13 @@
 namespace MysticRiver.Domain;
 
+[Flags]
 public enum StatusEffect
 {
-    Poison,
-    Burn,
-    Paralysis,
-    Sleep,
-    Freeze,
-    Toxic
+    None      = 0,
+    Poison    = 1,
+    Burn      = 2,
+    Paralysis = 4,
+    Sleep     = 8,
+    Freeze    = 16,
+    Toxic     = 32
 }
