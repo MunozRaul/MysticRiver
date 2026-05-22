@@ -45,7 +45,7 @@ public sealed class BattleService(IBattleSessionStore battleSessionStore) : IBat
             .ToList();
     }
 
-    public BattleStateDto ExecuteBasicAttack(string battleId, ExecuteBasicAttackRequest request) {
+    public BattleActionResult ExecuteBasicAttack(string battleId, ExecuteBasicAttackRequest request) {
         ArgumentException.ThrowIfNullOrWhiteSpace(battleId);
         ArgumentNullException.ThrowIfNull(request);
 
@@ -65,11 +65,16 @@ public sealed class BattleService(IBattleSessionStore battleSessionStore) : IBat
                 Source = attacker,
                 Destination = target
             };
-            return ExecuteTurnWithCounter(session, attacker, attackMove);
+            var abilityDefinition = AbilityCatalog.TryGetById("basic-attack", out var ability)
+                ? MapAbility(ability!)
+                : new AbilityDefinitionDto("basic-attack", "Basic Attack", ContractAbilityTarget.Enemy, ContractAbilityTag.Damage, 0);
+            var summary = CreateActionSummary(session, abilityDefinition, attackMove);
+            var state = ExecuteTurnWithCounter(session, attacker, attackMove);
+            return new BattleActionResult(state, summary);
         }
     }
 
-    public BattleStateDto ExecuteAbility(string battleId, ExecuteAbilityRequest request)
+    public BattleActionResult ExecuteAbility(string battleId, ExecuteAbilityRequest request)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(battleId);
         ArgumentNullException.ThrowIfNull(request);
@@ -117,7 +122,9 @@ public sealed class BattleService(IBattleSessionStore battleSessionStore) : IBat
             }
 
             var move = ability.CreateMove(attacker, target);
-            return ExecuteTurnWithCounter(session, attacker, move);
+            var summary = CreateActionSummary(session, MapAbility(ability), move);
+            var state = ExecuteTurnWithCounter(session, attacker, move);
+            return new BattleActionResult(state, summary);
         }
     }
 
@@ -237,6 +244,124 @@ public sealed class BattleService(IBattleSessionStore battleSessionStore) : IBat
         }
 
         return mapped;
+    }
+
+    private static BattleActionSummaryDto CreateActionSummary(
+        BattleSession session,
+        AbilityDefinitionDto ability,
+        Move move)
+    {
+        var actorId = GetMoveActorId(session, move);
+        var targetId = GetMoveTargetId(session, move);
+        var appliedEffects = BuildAppliedEffects(session, move);
+
+        return new BattleActionSummaryDto(ability, actorId, targetId, appliedEffects);
+    }
+
+    private static string GetMoveActorId(BattleSession session, Move move)
+    {
+        return move switch
+        {
+            TargetedMove targeted => session.GetCreatureId(targeted.Source),
+            SelfMove self => session.GetCreatureId(self.Self),
+            _ => throw new ArgumentException($"Unknown move type: {move.GetType().Name}")
+        };
+    }
+
+    private static string? GetMoveTargetId(BattleSession session, Move move)
+    {
+        return move switch
+        {
+            TargetedMove targeted => session.GetCreatureId(targeted.Destination),
+            SelfMove self => session.GetCreatureId(self.Self),
+            _ => null
+        };
+    }
+
+    private static IReadOnlyList<AppliedEffectDto> BuildAppliedEffects(BattleSession session, Move move)
+    {
+        var effects = new List<AppliedEffectDto>();
+
+        switch (move)
+        {
+            case DamageMove damageMove:
+                effects.Add(new AppliedEffectDto(
+                    AppliedEffectKind.Damage,
+                    session.GetCreatureId(damageMove.Destination),
+                    damageMove.DamageAmount));
+                break;
+            case StatusDamageMove statusDamageMove:
+                effects.Add(new AppliedEffectDto(
+                    AppliedEffectKind.Damage,
+                    session.GetCreatureId(statusDamageMove.Destination),
+                    statusDamageMove.DamageAmount));
+                effects.Add(new AppliedEffectDto(
+                    AppliedEffectKind.Status,
+                    session.GetCreatureId(statusDamageMove.Destination),
+                    StatusEffect: MapStatusEffect(statusDamageMove.Effect)));
+                break;
+            case LifestealMove lifestealMove:
+                effects.Add(new AppliedEffectDto(
+                    AppliedEffectKind.Damage,
+                    session.GetCreatureId(lifestealMove.Destination),
+                    lifestealMove.DamageAmount));
+                effects.Add(new AppliedEffectDto(
+                    AppliedEffectKind.Lifesteal,
+                    session.GetCreatureId(lifestealMove.Source),
+                    Ratio: lifestealMove.HealRatio));
+                break;
+            case HealMove healMove:
+                effects.Add(new AppliedEffectDto(
+                    AppliedEffectKind.Heal,
+                    session.GetCreatureId(healMove.Self),
+                    healMove.HealAmount));
+                break;
+            case ShieldMove shieldMove:
+                effects.Add(new AppliedEffectDto(
+                    AppliedEffectKind.Shield,
+                    session.GetCreatureId(shieldMove.Self),
+                    shieldMove.ShieldAmount));
+                break;
+            case ManaRestoreMove manaRestoreMove:
+                effects.Add(new AppliedEffectDto(
+                    AppliedEffectKind.ManaRestore,
+                    session.GetCreatureId(manaRestoreMove.Self),
+                    manaRestoreMove.ManaAmount));
+                break;
+            case ManaBurnMove manaBurnMove:
+                effects.Add(new AppliedEffectDto(
+                    AppliedEffectKind.ManaBurn,
+                    session.GetCreatureId(manaBurnMove.Self),
+                    manaBurnMove.ManaAmount));
+                break;
+            case ManaDrainMove manaDrainMove:
+                effects.Add(new AppliedEffectDto(
+                    AppliedEffectKind.ManaDrain,
+                    session.GetCreatureId(manaDrainMove.Destination),
+                    manaDrainMove.ManaAmount));
+                break;
+            case StatusEffectMove statusMove:
+                effects.Add(new AppliedEffectDto(
+                    AppliedEffectKind.Status,
+                    session.GetCreatureId(statusMove.Destination),
+                    StatusEffect: MapStatusEffect(statusMove.Effect)));
+                break;
+            case SelfStatusMove selfStatusMove:
+                effects.Add(new AppliedEffectDto(
+                    AppliedEffectKind.Status,
+                    session.GetCreatureId(selfStatusMove.Self),
+                    StatusEffect: MapStatusEffect(selfStatusMove.Effect)));
+                break;
+            case CrowdControlMove crowdControlMove:
+                effects.Add(new AppliedEffectDto(
+                    AppliedEffectKind.CrowdControl,
+                    session.GetCreatureId(crowdControlMove.Destination),
+                    CrowdControl: MapCrowdControl(crowdControlMove.CrowdControlType),
+                    Turns: crowdControlMove.Turns));
+                break;
+        }
+
+        return effects;
     }
 
     private static (Creature attacker, Creature target) GetCounterPair(BattleSession session, Creature attacker)

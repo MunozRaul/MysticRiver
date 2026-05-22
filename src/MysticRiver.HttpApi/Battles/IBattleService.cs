@@ -6,6 +6,6 @@ public interface IBattleService {
     StartBattleResponse StartBattle(StartBattleRequest request);
     BattleStateDto GetBattleState(string battleId);
     IReadOnlyList<AbilityDefinitionDto> GetAbilities();
-    BattleStateDto ExecuteBasicAttack(string battleId, ExecuteBasicAttackRequest request);
-    BattleStateDto ExecuteAbility(string battleId, ExecuteAbilityRequest request);
+    BattleActionResult ExecuteBasicAttack(string battleId, ExecuteBasicAttackRequest request);
+    BattleActionResult ExecuteAbility(string battleId, ExecuteAbilityRequest request);
 }

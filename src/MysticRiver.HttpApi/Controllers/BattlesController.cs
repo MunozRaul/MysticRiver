@@ -74,16 +74,16 @@ private static ProblemDetails CreateProblem(string title, string detail) {
 
 private async Task<ActionResult<BattleStateDto>> ExecuteBattleActionAsync(
     string battleId,
-    Func<BattleStateDto> action,
+    Func<BattleActionResult> action,
     string invalidRequestTitle)
 {
     try
     {
-        var state = action();
-        var battleEvent = new BattleStateUpdatedEvent(battleId, state);
+        var result = action();
+        var battleEvent = new BattleStateUpdatedEvent(battleId, result.State, result.ActionSummary);
 
         await _battleHubContext.Clients.Group(battleId).BattleStateUpdated(battleEvent);
-        return Ok(state);
+        return Ok(result.State);
     }
     catch (KeyNotFoundException exception)
     {
