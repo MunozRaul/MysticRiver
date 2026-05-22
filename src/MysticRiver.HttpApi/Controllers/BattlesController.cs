@@ -25,6 +25,13 @@ public sealed class BattlesController(
         }
     }
 
+    [HttpGet("abilities")]
+    public ActionResult<IReadOnlyList<AbilityDefinitionDto>> GetAbilities()
+    {
+        var abilities = _battleService.GetAbilities();
+        return Ok(abilities);
+    }
+
     [HttpPost("{battleId}/actions/basic-attack")]
     public async Task<ActionResult<BattleStateDto>> ExecuteBasicAttack(string battleId, [FromBody] ExecuteBasicAttackRequest request) {
         try {
@@ -42,6 +49,31 @@ public sealed class BattlesController(
         }
         catch (ArgumentException exception) {
             return BadRequest(CreateProblem("Invalid attack request.", exception.Message));
+        }
+    }
+
+    [HttpPost("{battleId}/actions/ability")]
+    public async Task<ActionResult<BattleStateDto>> ExecuteAbility(string battleId, [FromBody] ExecuteAbilityRequest request)
+    {
+        try
+        {
+            var state = _battleService.ExecuteAbility(battleId, request);
+            var battleEvent = new BattleStateUpdatedEvent(battleId, state);
+
+            await _battleHubContext.Clients.Group(battleId).BattleStateUpdated(battleEvent);
+            return Ok(state);
+        }
+        catch (KeyNotFoundException exception)
+        {
+            return NotFound(CreateProblem("Battle or creature not found.", exception.Message));
+        }
+        catch (InvalidOperationException exception)
+        {
+            return BadRequest(CreateProblem("Battle action cannot be executed.", exception.Message));
+        }
+        catch (ArgumentException exception)
+        {
+            return BadRequest(CreateProblem("Invalid ability request.", exception.Message));
         }
     }
 
