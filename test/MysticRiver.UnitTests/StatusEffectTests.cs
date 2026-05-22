@@ -37,7 +37,7 @@ public class StatusEffectTests
     {
         var creature = new Creature("Gruk", 100, 10);
 
-        Assert.Null(creature.Status);
+        Assert.Equal(StatusEffect.None, creature.Status);
     }
 
     [Fact]
@@ -59,7 +59,7 @@ public class StatusEffectTests
 
         creature.ClearStatus();
 
-        Assert.Null(creature.Status);
+        Assert.Equal(StatusEffect.None, creature.Status);
     }
 
     // ── StatusAttack move ────────────────────────────────────────────────────
@@ -111,7 +111,7 @@ public class StatusEffectTests
 
         battle.ExecuteTurn(move1, move2);
 
-        Assert.Null(p2.Status);
+        Assert.Equal(StatusEffect.None, p2.Status);
     }
 
     [Fact]
@@ -125,7 +125,7 @@ public class StatusEffectTests
         battle.ExecuteTurn(killMove, normalMove);
 
         Assert.True(p2.IsDead);
-        Assert.Null(p2.Status);
+        Assert.Equal(StatusEffect.None, p2.Status);
     }
 
     // ── Status ticks on next turn ─────────────────────────────────────────────
@@ -222,7 +222,7 @@ public class StatusEffectTests
             Attack(p2, p1, 10));
 
         Assert.Equal(StatusEffect.Poison, result.Creature2Status);
-        Assert.Null(result.Creature1Status);
+        Assert.Equal(StatusEffect.None, result.Creature1Status);
     }
 
     [Fact]
@@ -234,8 +234,8 @@ public class StatusEffectTests
             Attack(p1, p2, 10),
             Attack(p2, p1, 10));
 
-        Assert.Null(result.Creature1Status);
-        Assert.Null(result.Creature2Status);
+        Assert.Equal(StatusEffect.None, result.Creature1Status);
+        Assert.Equal(StatusEffect.None, result.Creature2Status);
     }
 
     // ── Paralysis: skips move for 2 turns ────────────────────────────────────
@@ -264,7 +264,7 @@ public class StatusEffectTests
 
         Assert.Equal(100, p1.CurrentHp); // p2 was skipped again
         Assert.Equal(90, p2.CurrentHp);
-        Assert.Null(p2.Status);
+        Assert.Equal(StatusEffect.None, p2.Status);
 
         // Turn 3: p2 can act normally
         battle.ExecuteTurn(
@@ -297,7 +297,7 @@ public class StatusEffectTests
             new ManaRestoreMove(1) { Self = p1 },
             Attack(p2, p1, 10));
 
-        Assert.Null(p2.Status);          // Sleep expired naturally
+        Assert.Equal(StatusEffect.None, p2.Status); // Sleep expired naturally
         Assert.Equal(100, p1.CurrentHp); // p2 was still asleep
     }
 
@@ -320,7 +320,7 @@ public class StatusEffectTests
             Attack(p1, p2, 5),
             Attack(p2, p1, 10));
 
-        Assert.Null(p2.Status);          // woke up from damage
+        Assert.Equal(StatusEffect.None, p2.Status); // woke up from damage
         Assert.Equal(90, p1.CurrentHp);  // p2 attacked after waking
     }
 
@@ -339,7 +339,7 @@ public class StatusEffectTests
             Attack(p2, p1, 10));
 
         Assert.Equal(100, p1.CurrentHp); // p2 was frozen (skipped)
-        Assert.Null(p2.Status);           // Freeze always clears after one turn
+        Assert.Equal(StatusEffect.None, p2.Status); // Freeze always clears after one turn
     }
 
     [Fact]
@@ -355,7 +355,7 @@ public class StatusEffectTests
             Attack(p2, p1, 10));
 
         Assert.Equal(90, p1.CurrentHp);  // p2 was not frozen (acted normally)
-        Assert.Null(p2.Status);           // Freeze always clears after one turn
+        Assert.Equal(StatusEffect.None, p2.Status); // Freeze always clears after one turn
     }
 
     [Fact]
@@ -370,7 +370,7 @@ public class StatusEffectTests
             StatusAttack(p1, p2, 5, StatusEffect.Freeze),
             Attack(p2, p1, 10));
 
-        Assert.Null(p2.Status);
+        Assert.Equal(StatusEffect.None, p2.Status);
 
         // Turn 2: p2 has no status, acts normally regardless of roll
         battle.ExecuteTurn(
