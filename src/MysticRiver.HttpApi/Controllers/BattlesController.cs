@@ -25,6 +25,20 @@ public sealed class BattlesController(
         }
     }
 
+    [HttpGet("{battleId}")]
+    public ActionResult<BattleStateDto> GetBattleState(string battleId)
+    {
+        try
+        {
+            var state = _battleService.GetBattleState(battleId);
+            return Ok(state);
+        }
+        catch (KeyNotFoundException exception)
+        {
+            return NotFound(CreateProblem("Battle not found.", exception.Message));
+        }
+    }
+
     [HttpGet("abilities")]
     public ActionResult<IReadOnlyList<AbilityDefinitionDto>> GetAbilities()
     {

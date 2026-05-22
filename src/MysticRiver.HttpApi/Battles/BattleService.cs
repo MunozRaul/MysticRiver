@@ -23,6 +23,21 @@ public sealed class BattleService(IBattleSessionStore battleSessionStore) : IBat
             MapState(session));
     }
 
+    public BattleStateDto GetBattleState(string battleId)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(battleId);
+
+        if (!_battleSessionStore.TryGet(battleId, out var session))
+        {
+            throw new KeyNotFoundException($"Battle '{battleId}' was not found.");
+        }
+
+        lock (session.SyncRoot)
+        {
+            return MapState(session);
+        }
+    }
+
     public IReadOnlyList<AbilityDefinitionDto> GetAbilities()
     {
         return AbilityCatalog.All
