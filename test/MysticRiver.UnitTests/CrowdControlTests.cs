@@ -103,7 +103,7 @@ public class CrowdControlTests
             Attack(p1, p2, 1),
             Attack(p2, p1, 1));
 
-        Assert.Null(p2.CrowdControl);
+        Assert.Equal(CrowdControlKind.None, p2.CrowdControl);
 
         // Turn 3: p2 can heal freely
         var p2HpBeforeHeal = p2.CurrentHp;
@@ -149,7 +149,7 @@ public class CrowdControlTests
             Attack(p1, p2, 10),
             Attack(p2, p1, 10));
 
-        Assert.Null(p2.CrowdControl); // stun expired after turn 2
+        Assert.Equal(CrowdControlKind.None, p2.CrowdControl); // stun expired after turn 2
 
         // Turn 3: stun cleared -> p2 can act
         battle.ExecuteTurn(
