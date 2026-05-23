@@ -171,6 +171,7 @@ public sealed class BattleService(IBattleSessionStore battleSessionStore) : IBat
             creature.MaxMana,
             creature.CurrentMana,
             creature.Initiative,
+            creature.EffectiveInitiative,
             creature.CurrentShield,
             GetStatusEffects(creature),
             MapCrowdControl(creature.CrowdControl),

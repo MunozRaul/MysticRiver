@@ -54,11 +54,12 @@ public partial class BattleView : UserControl {
 
         var response = await _battleApiClient.StartBattleAsync();
         battleId = response.BattleId;
+        selectedTarget = enemyId; // Default to enemy target
         ApplyState(response.State);
 
         await LoadAbilitiesAsync();
         await _battleRealtimeClient.JoinBattleAsync(battleId);
-        SetStatus("Connected. Real-time updates are active.");
+        SetStatus("Connected. Real-time updates are active. Enemy selected as default target.");
         isInitialized = true;
     }
 
@@ -87,10 +88,11 @@ public partial class BattleView : UserControl {
             isAttackInProgress = true;
             SetStatus($"Executing {ability.Label}...");
 
-            // Create request with selected target if applicable
-            var request = selectedTarget is not null
-                ? ability.AbilityRequest with { TargetId = selectedTarget }
-                : ability.AbilityRequest;
+            // Create request: preserve explicit TargetId on ability (self-targeted), otherwise use selectedTarget
+            var request = ability.AbilityRequest!;
+            if (request.TargetId is null && selectedTarget is not null) {
+                request = request with { TargetId = selectedTarget };
+            }
 
             var state = await _battleApiClient.ExecuteAbilityAsync(battleId, request);
             ApplyState(state);
@@ -208,28 +210,61 @@ public partial class BattleView : UserControl {
     }
 
     private void UpdateTurnOrder(BattleStateDto state) {
-        TurnOrderDescriptionTextBlock.Text = state.BattleEnded
-            ? "Battle finished"
-            : "Live next-turn preview";
+        TurnOrderDescriptionTextBlock.Text = state.BattleEnded ? "Battle finished" : "Live next-turn preview";
+
+        var line1Border = FindName("TurnOrderLine1Border") as Border;
+        var line2Border = FindName("TurnOrderLine2Border") as Border;
+        var line3Border = FindName("TurnOrderLine3Border") as Border;
+        var line4Border = FindName("TurnOrderLine4Border") as Border;
 
         if (state.BattleEnded) {
             var winnerText = string.Equals(state.WinnerCreatureId, state.Creature1.CreatureId, StringComparison.OrdinalIgnoreCase)
                 ? state.Creature1.Name
                 : state.Creature2.Name;
+
             TurnOrderLine1TextBlock.Text = $"1. {winnerText} (Winner)";
             TurnOrderLine2TextBlock.Text = "2. -";
             TurnOrderLine3TextBlock.Text = "3. -";
             TurnOrderLine4TextBlock.Text = "4. -";
+
+            if (line1Border is not null) { line1Border.Background = new SolidColorBrush(Color.FromArgb(255, 34, 197, 94)); }
+            if (line2Border is not null) { line2Border.Background = new SolidColorBrush(Color.FromArgb(102, 40, 49, 73)); }
+            if (line3Border is not null) { line3Border.Background = new SolidColorBrush(Color.FromArgb(102, 60, 42, 54)); }
+            if (line4Border is not null) { line4Border.Background = new SolidColorBrush(Color.FromArgb(102, 40, 49, 73)); }
             return;
         }
 
-        var first = state.Creature1.Initiative >= state.Creature2.Initiative ? state.Creature1 : state.Creature2;
-        var second = ReferenceEquals(first, state.Creature1) ? state.Creature2 : state.Creature1;
+        // Order creatures by EffectiveInitiative (higher acts first)
+        var ordered = new List<BattleCreatureDto> { state.Creature1, state.Creature2 }
+            .OrderByDescending(c => c.EffectiveInitiative)
+            .ToList();
 
-        TurnOrderLine1TextBlock.Text = $"1. {first.Name}";
-        TurnOrderLine2TextBlock.Text = $"2. {second.Name}";
-        TurnOrderLine3TextBlock.Text = $"3. {first.Name}";
-        TurnOrderLine4TextBlock.Text = $"4. {second.Name}";
+        // Build a repeating next-turn sequence of length 4
+        var sequence = new List<BattleCreatureDto>();
+        while (sequence.Count < 4) {
+            foreach (var c in ordered) {
+                sequence.Add(c);
+                if (sequence.Count >= 4) { break; }
+            }
+        }
+
+        var highlights = new[] {
+            new SolidColorBrush(Color.FromArgb(255, 255, 215, 0)), // gold - next turn
+            new SolidColorBrush(Color.FromArgb(102, 40, 49, 73)),
+            new SolidColorBrush(Color.FromArgb(102, 60, 42, 54)),
+            new SolidColorBrush(Color.FromArgb(102, 40, 49, 73))
+        };
+
+        var borders = new[] { line1Border, line2Border, line3Border, line4Border };
+        var tbs = new[] { TurnOrderLine1TextBlock, TurnOrderLine2TextBlock, TurnOrderLine3TextBlock, TurnOrderLine4TextBlock };
+
+        for (var i = 0; i < 4; i++) {
+            var c = sequence[i];
+            var tb = tbs[i];
+            var bd = borders[i];
+            if (tb is not null) { tb.Text = $"{i + 1}. {c.Name} ({c.EffectiveInitiative})"; }
+            if (bd is not null) { bd.Background = highlights[i]; }
+        }
     }
 
     private void PlayerCreature_Click(object sender, RoutedEventArgs e) {
