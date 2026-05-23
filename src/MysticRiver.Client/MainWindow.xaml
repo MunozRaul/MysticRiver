@@ -6,11 +6,10 @@
         xmlns:views="clr-namespace:MysticRiver.Client.Views"
         mc:Ignorable="d"
         Title="Mystic River"
-        Height="720"
-        Width="1280"
-        MinHeight="640"
-        MinWidth="1100"
-        WindowStartupLocation="CenterScreen">
+        WindowStartupLocation="CenterScreen"
+        WindowStyle="None"
+        WindowState="Maximized"
+        ResizeMode="NoResize">
     <Grid>
         <views:MainMenuView x:Name="MenuView" SinglePlayerRequested="MenuView_SinglePlayerRequested" />
         <views:BattleView x:Name="BattleView" Visibility="Collapsed" />
