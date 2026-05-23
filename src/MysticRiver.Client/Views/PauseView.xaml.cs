@@ -16,4 +16,15 @@ public partial class PauseView : UserControl {
         ExitButton.Click += (s, e) => ExitRequested?.Invoke(this, EventArgs.Empty);
         CancelButton.Click += (s, e) => CancelRequested?.Invoke(this, EventArgs.Empty);
     }
+
+    private void PauseView_Loaded(object sender, RoutedEventArgs e) {
+        Focus();
+    }
+
+    private void PauseView_PreviewKeyDown(object sender, System.Windows.Input.KeyEventArgs e) {
+        if (e.Key == System.Windows.Input.Key.Escape) {
+            CancelRequested?.Invoke(this, EventArgs.Empty);
+            e.Handled = true;
+        }
+    }
 }

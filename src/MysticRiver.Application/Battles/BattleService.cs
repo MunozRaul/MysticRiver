@@ -38,6 +38,35 @@ public sealed class BattleService(IBattleSessionStore battleSessionStore) : IBat
         }
     }
 
+    public BattleActionResult AbandonBattle(string battleId, AbandonBattleRequest request)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(battleId);
+        ArgumentNullException.ThrowIfNull(request);
+
+        var session = GetRequiredSession(battleId);
+
+        lock (session.SyncRoot)
+        {
+            var abandoningCreature = session.GetRequiredCreature(request.AbandoningCreatureId);
+            session.Concede(request.AbandoningCreatureId);
+
+            var winnerId = session.ForcedWinnerCreatureId
+                ?? throw new InvalidOperationException("Battle forfeit did not resolve a winner.");
+
+            var winnerCreature = session.GetRequiredCreature(winnerId);
+            var forfeitAbility = new AbilityDefinitionDto("forfeit", "Forfeit", ContractAbilityTarget.Self, default, 0);
+            var summary = new BattleActionSummaryDto(
+                forfeitAbility,
+                session.GetCreatureId(abandoningCreature),
+                null,
+                Array.Empty<AppliedEffectDto>());
+
+            var state = MapState(session);
+            _ = winnerCreature;
+            return new BattleActionResult(state, new[] { summary });
+        }
+    }
+
     public IReadOnlyList<AbilityDefinitionDto> GetAbilities()
     {
         return AbilityCatalog.All
@@ -157,9 +186,10 @@ public sealed class BattleService(IBattleSessionStore battleSessionStore) : IBat
         var creature2Id = session.GetCreatureId(session.Battle.Creature2);
         var creature1 = MapCreature(session.Battle.Creature1, creature1Id);
         var creature2 = MapCreature(session.Battle.Creature2, creature2Id);
-        var winnerId = session.Battle.TryGetResult(out var result)
-            ? session.GetCreatureId(result!.Winner)
-            : null;
+        var winnerId = session.ForcedWinnerCreatureId
+            ?? (session.Battle.TryGetResult(out var result)
+                ? session.GetCreatureId(result!.Winner)
+                : null);
 
         return new BattleStateDto(
             session.BattleId,
@@ -167,7 +197,7 @@ public sealed class BattleService(IBattleSessionStore battleSessionStore) : IBat
             session.StateVersion,
             creature1,
             creature2,
-            session.Battle.IsOver,
+            session.IsConcluded,
             winnerId);
     }
 

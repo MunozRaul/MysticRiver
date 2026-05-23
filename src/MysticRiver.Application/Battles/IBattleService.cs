@@ -8,4 +8,5 @@ public interface IBattleService {
     IReadOnlyList<AbilityDefinitionDto> GetAbilities();
     BattleActionResult ExecuteBasicAttack(string battleId, ExecuteBasicAttackRequest request);
     BattleActionResult ExecuteAbility(string battleId, ExecuteAbilityRequest request);
+    BattleActionResult AbandonBattle(string battleId, AbandonBattleRequest request);
 }

@@ -50,6 +50,14 @@ public sealed class BattleRealtimeClient : IAsyncDisposable {
         await _hubConnection.InvokeAsync("JoinBattle", battleId, cancellationToken);
     }
 
+    public async Task DisconnectAsync(CancellationToken cancellationToken = default) {
+        if (_hubConnection.State == HubConnectionState.Disconnected) {
+            return;
+        }
+
+        await _hubConnection.StopAsync(cancellationToken);
+    }
+
     public async ValueTask DisposeAsync() {
         await _hubConnection.DisposeAsync();
     }

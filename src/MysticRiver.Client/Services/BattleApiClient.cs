@@ -50,5 +50,21 @@ public sealed class BattleApiClient(HttpClient httpClient) {
         var result = await response.Content.ReadFromJsonAsync<BattleStateDto>(cancellationToken: cancellationToken);
         return result ?? throw new InvalidOperationException("GetBattleState response was empty.");
     }
-}
 
+    public async Task<BattleStateDto> AbandonBattleAsync(
+        string battleId,
+        AbandonBattleRequest request,
+        CancellationToken cancellationToken = default) {
+        ArgumentException.ThrowIfNullOrWhiteSpace(battleId);
+        ArgumentNullException.ThrowIfNull(request);
+
+        using var response = await _httpClient.PostAsJsonAsync(
+            $"api/battles/{battleId}/abandon",
+            request,
+            cancellationToken);
+        response.EnsureSuccessStatusCode();
+
+        var result = await response.Content.ReadFromJsonAsync<BattleStateDto>(cancellationToken: cancellationToken);
+        return result ?? throw new InvalidOperationException("Abandon battle response was empty.");
+    }
+}

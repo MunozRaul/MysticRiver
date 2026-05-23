@@ -48,6 +48,15 @@ public sealed class BattlesController(
         }
     }
 
+    [HttpPost("{battleId}/abandon")]
+    public async Task<ActionResult<BattleStateDto>> AbandonBattle(string battleId, [FromBody] AbandonBattleRequest request) {
+        return await ExecuteBattleActionAsync(
+            battleId,
+            () => _battleService.AbandonBattle(battleId, request),
+            "Invalid abandon request.",
+            "abandon");
+    }
+
     [HttpGet("abilities")]
     public ActionResult<IReadOnlyList<AbilityDefinitionDto>> GetAbilities()
     {

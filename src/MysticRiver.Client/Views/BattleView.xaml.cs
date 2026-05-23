@@ -58,9 +58,24 @@ SetAbilities(CreatePlaceholderBattleAbilities());
         // Clear state and log; allow re-initialization on next StartBattle
         battleId = null;
         isInitialized = false;
+        isAttackInProgress = false;
+        selectedTarget = null;
+        playerCurrentMana = 0;
         _actionLog.Clear();
+        SetAbilities(CreatePlaceholderBattleAbilities());
         // Note: we don't dispose the shared BattleRealtimeClient here; just reset local state.
         await Task.CompletedTask;
+    }
+
+    public async Task AbandonBattleAsync() {
+        if (battleId is null) {
+            return;
+        }
+
+        SetStatus("Abandoning match...");
+        await _battleApiClient.AbandonBattleAsync(battleId, new AbandonBattleRequest(playerId));
+        await _battleRealtimeClient.DisconnectAsync();
+        await CleanupAsync();
     }
 
     public async Task InitializeAsync() {
@@ -445,9 +460,11 @@ SetAbilities(CreatePlaceholderBattleAbilities());
                 }
             }
 
-            var actionText = summary.TargetId is null
-                ? $"{actorName} used {summary.Ability.Name}: {string.Join(", ", parts)}"
-                : $"{actorName} used {summary.Ability.Name} on {targetName}: {string.Join(", ", parts)}";
+            var actionText = parts.Count == 0
+                ? $"{actorName} forfeited the match."
+                : summary.TargetId is null
+                    ? $"{actorName} used {summary.Ability.Name}: {string.Join(", ", parts)}"
+                    : $"{actorName} used {summary.Ability.Name} on {targetName}: {string.Join(", ", parts)}";
 
             var isPlayer = summary.ActorId == state.Creature1.CreatureId;
             _actionLog.Add(new ActionLogEntry(actionText, isPlayer));
