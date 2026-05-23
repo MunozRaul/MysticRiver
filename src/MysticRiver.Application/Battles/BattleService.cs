@@ -49,17 +49,13 @@ public sealed class BattleService(IBattleSessionStore battleSessionStore) : IBat
         ArgumentException.ThrowIfNullOrWhiteSpace(battleId);
         ArgumentNullException.ThrowIfNull(request);
 
-        if (!_battleSessionStore.TryGet(battleId, out var session)) {
-            throw new KeyNotFoundException($"Battle '{battleId}' was not found.");
-        }
+        var session = GetRequiredSession(battleId);
 
         lock (session.SyncRoot) {
             var attacker = session.GetRequiredCreature(request.AttackerId);
             var target = session.GetRequiredCreature(request.TargetId);
 
-            if (ReferenceEquals(attacker, target)) {
-                throw new ArgumentException("Attacker and target must be different creatures.");
-            }
+            ValidateDifferentCreatures(attacker, target);
 
             var attackMove = new DamageMove(request.Power, DamageKind.Physical) {
                 Source = attacker,
@@ -79,10 +75,7 @@ public sealed class BattleService(IBattleSessionStore battleSessionStore) : IBat
         ArgumentException.ThrowIfNullOrWhiteSpace(battleId);
         ArgumentNullException.ThrowIfNull(request);
 
-        if (!_battleSessionStore.TryGet(battleId, out var session))
-        {
-            throw new KeyNotFoundException($"Battle '{battleId}' was not found.");
-        }
+        var session = GetRequiredSession(battleId);
 
         if (!AbilityCatalog.TryGetById(request.AbilityId, out var ability) || ability is null)
         {
@@ -92,39 +85,61 @@ public sealed class BattleService(IBattleSessionStore battleSessionStore) : IBat
         lock (session.SyncRoot)
         {
             var attacker = session.GetRequiredCreature(request.AttackerId);
-            Creature? target = null;
-
-            if (!string.IsNullOrWhiteSpace(request.TargetId))
-            {
-                target = session.GetRequiredCreature(request.TargetId);
-            }
-
-            if (ability.Target == DomainAbilityTarget.Enemy)
-            {
-                if (target is null)
-                {
-                    throw new ArgumentException("TargetId is required for enemy abilities.");
-                }
-
-                if (ReferenceEquals(attacker, target))
-                {
-                    throw new ArgumentException("Attacker and target must be different creatures.");
-                }
-            }
-            else
-            {
-                if (target is not null && !ReferenceEquals(attacker, target))
-                {
-                    throw new ArgumentException("Self-targeted abilities must target the attacker.");
-                }
-
-                target = attacker;
-            }
+            var target = ResolveAndValidateTarget(session, attacker, ability, request.TargetId);
 
             var move = ability.CreateMove(attacker, target);
             var summary = CreateActionSummary(session, MapAbility(ability), move);
             var state = ExecuteTurnWithCounter(session, attacker, move);
             return new BattleActionResult(state, summary);
+        }
+    }
+
+    private BattleSession GetRequiredSession(string battleId)
+    {
+        if (!_battleSessionStore.TryGet(battleId, out var session))
+        {
+            throw new KeyNotFoundException($"Battle '{battleId}' was not found.");
+        }
+
+        return session;
+    }
+
+    private Creature ResolveAndValidateTarget(BattleSession session, Creature attacker, AbilityDefinition ability, string? targetId)
+    {
+        Creature? target = null;
+
+        if (!string.IsNullOrWhiteSpace(targetId))
+        {
+            target = session.GetRequiredCreature(targetId);
+        }
+
+        if (ability.Target == DomainAbilityTarget.Enemy)
+        {
+            if (target is null)
+            {
+                throw new ArgumentException("TargetId is required for enemy abilities.");
+            }
+
+            ValidateDifferentCreatures(attacker, target);
+        }
+        else
+        {
+            if (target is not null && !ReferenceEquals(attacker, target))
+            {
+                throw new ArgumentException("Self-targeted abilities must target the attacker.");
+            }
+
+            target = attacker;
+        }
+
+        return target;
+    }
+
+    private static void ValidateDifferentCreatures(Creature creature1, Creature creature2)
+    {
+        if (ReferenceEquals(creature1, creature2))
+        {
+            throw new ArgumentException("Attacker and target must be different creatures.");
         }
     }
 
