@@ -3,7 +3,7 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-             mc:Ignorable="d">
+             mc:Ignorable="d" UseLayoutRounding="True" SnapsToDevicePixels="True">
     <UserControl.Resources>
         <Style x:Key="ActionButtonStyle" TargetType="Button">
             <Setter Property="Margin" Value="0,0,12,10" />
@@ -19,7 +19,7 @@
 
     <Grid>
         <Grid.Background>
-            <ImageBrush ImageSource="pack://siteoforigin:,,,/Assets/Placeholders/battle-background.png" Stretch="UniformToFill" />
+            <ImageBrush ImageSource="pack://siteoforigin:,,,/Assets/battle-background-winter_cropped.png" Stretch="UniformToFill" RenderOptions.BitmapScalingMode="NearestNeighbor" />
         </Grid.Background>
 
         <Rectangle Fill="#7F10131A" />
@@ -105,11 +105,14 @@
                         MouseDown="PlayerCreature_Click"
                         Cursor="Hand">
                     <StackPanel>
-                        <Image Width="200"
-                               Height="200"
+                        <Image Width="240"
+                               Height="240"
                                HorizontalAlignment="Center"
-                               Source="pack://siteoforigin:,,,/Assets/Placeholders/hero-placeholder.png"
-                               Stretch="UniformToFill" />
+                               VerticalAlignment="Center"
+                               Source="pack://siteoforigin:,,,/Assets/male_hero_cropped.png"
+                               Stretch="Uniform"
+                               SnapsToDevicePixels="True"
+                               RenderOptions.BitmapScalingMode="NearestNeighbor" />
                         <TextBlock x:Name="PlayerNameTextBlock" Margin="0,8,0,0" FontSize="16" FontWeight="Bold" Foreground="#FFF8FAFC" Text="Knight of the River" />
                         
                         <!-- HP Bar -->
@@ -168,11 +171,14 @@
                         MouseDown="EnemyCreature_Click"
                         Cursor="Hand">
                     <StackPanel>
-                        <Image Width="200"
-                               Height="200"
+                        <Image Width="240"
+                               Height="240"
                                HorizontalAlignment="Center"
-                               Source="pack://siteoforigin:,,,/Assets/Placeholders/enemy-placeholder.png"
-                               Stretch="UniformToFill" />
+                               VerticalAlignment="Center"
+                               Source="pack://siteoforigin:,,,/Assets/enemy_dragon_cropped.png"
+                               Stretch="Uniform"
+                               SnapsToDevicePixels="True"
+                               RenderOptions.BitmapScalingMode="NearestNeighbor" />
                         <TextBlock x:Name="EnemyNameTextBlock" Margin="0,8,0,0" HorizontalAlignment="Center" FontSize="16" FontWeight="Bold" Foreground="#FFF8FAFC" Text="Wraith Duelist" />
                         
                         <!-- HP Bar -->
