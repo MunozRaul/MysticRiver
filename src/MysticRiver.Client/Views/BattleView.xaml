@@ -73,7 +73,9 @@
                         Background="#D8272F3D"
                         BorderBrush="#FFB0C7FF"
                         BorderThickness="1"
-                        CornerRadius="10">
+                        CornerRadius="10"
+                        MouseDown="PlayerCreature_Click"
+                        Cursor="Hand">
                     <StackPanel>
                         <Image Width="220"
                                Height="220"
@@ -107,7 +109,9 @@
                         Background="#D83A2432"
                         BorderBrush="#FFFFBCC8"
                         BorderThickness="1"
-                        CornerRadius="10">
+                        CornerRadius="10"
+                        MouseDown="EnemyCreature_Click"
+                        Cursor="Hand">
                     <StackPanel>
                         <Image Width="220"
                                Height="220"

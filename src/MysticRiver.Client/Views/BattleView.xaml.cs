@@ -31,6 +31,8 @@ public partial class BattleView : UserControl {
     private string? battleId;
     private bool isInitialized;
     private bool isAttackInProgress;
+    private AbilityOption? selectedAbility;
+    private string? selectedTarget;
 
     public IReadOnlyList<AbilityOption> Abilities => _abilities;
 
@@ -75,12 +77,28 @@ public partial class BattleView : UserControl {
             return;
         }
 
+        // If this ability requires target selection, show target UI instead of executing immediately
+        if (ability.RequiresTargetSelection && selectedTarget is null) {
+            selectedAbility = ability;
+            SetStatus($"Select a target for {ability.Label}");
+            return;
+        }
+
         try {
             isAttackInProgress = true;
             SetStatus($"Executing {ability.Label}...");
 
-            var state = await _battleApiClient.ExecuteAbilityAsync(battleId, ability.AbilityRequest);
+            // Create request with selected target if applicable
+            var request = selectedTarget is not null
+                ? ability.AbilityRequest with { TargetId = selectedTarget }
+                : ability.AbilityRequest;
+
+            var state = await _battleApiClient.ExecuteAbilityAsync(battleId, request);
             ApplyState(state);
+            
+            // Reset target selection after execution
+            selectedAbility = null;
+            selectedTarget = null;
         }
         catch (HttpRequestException exception) {
             SetStatus($"Request failed: {exception.Message}");
@@ -146,6 +164,27 @@ public partial class BattleView : UserControl {
         TurnOrderLine4TextBlock.Text = $"4. {second.Name}";
     }
 
+    private void PlayerCreature_Click(object sender, RoutedEventArgs e) {
+        if (selectedAbility is null || !selectedAbility.RequiresTargetSelection) {
+            return;
+        }
+
+        SelectTarget(playerId);
+    }
+
+    private void EnemyCreature_Click(object sender, RoutedEventArgs e) {
+        if (selectedAbility is null || !selectedAbility.RequiresTargetSelection) {
+            return;
+        }
+
+        SelectTarget(enemyId);
+    }
+
+    private void SelectTarget(string targetId) {
+        selectedTarget = targetId;
+        SetStatus($"Target selected. Click to confirm {selectedAbility?.Label}.");
+    }
+
     private void SetStatus(string status) {
         BattleStatusTextBlock.Text = status;
     }
@@ -174,9 +213,11 @@ public partial class BattleView : UserControl {
     }
 
     private static AbilityOption CreateAbilityOption(AbilityDefinitionDto ability) {
-        var targetId = ability.Target == AbilityTarget.Self ? playerId : enemyId;
+        // Enemy-targeted abilities need target selection; self-targeted abilities don't
+        var requiresTargetSelection = ability.Target == AbilityTarget.Enemy;
+        var targetId = ability.Target == AbilityTarget.Self ? playerId : null;
         var request = new ExecuteAbilityRequest(ability.Id, TargetId: targetId);
-        return new AbilityOption(ability.Name, true, request);
+        return new AbilityOption(ability.Name, true, request, requiresTargetSelection);
     }
 
     private void SetAbilities(IEnumerable<AbilityOption> abilities) {
@@ -189,5 +230,6 @@ public partial class BattleView : UserControl {
     public sealed record AbilityOption(
         string Label,
         bool IsEnabled,
-        ExecuteAbilityRequest? AbilityRequest);
+        ExecuteAbilityRequest? AbilityRequest,
+        bool RequiresTargetSelection = false);
 }
