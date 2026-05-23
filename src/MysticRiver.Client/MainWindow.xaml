@@ -9,9 +9,11 @@
         WindowStartupLocation="CenterScreen"
         WindowStyle="None"
         WindowState="Maximized"
-        ResizeMode="NoResize">
+        ResizeMode="NoResize"
+        PreviewKeyDown="Window_PreviewKeyDown">
     <Grid>
         <views:MainMenuView x:Name="MenuView" SinglePlayerRequested="MenuView_SinglePlayerRequested" />
         <views:BattleView x:Name="BattleView" Visibility="Collapsed" />
+        <views:PauseView x:Name="PauseView" Visibility="Collapsed" />
     </Grid>
 </Window>

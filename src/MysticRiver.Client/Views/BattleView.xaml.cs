@@ -53,6 +53,16 @@ SetAbilities(CreatePlaceholderBattleAbilities());
         DataContext = this;
     }
 
+    // Cleanup so that abandoning a match resets state and allows re-entering a new battle
+    public async Task CleanupAsync() {
+        // Clear state and log; allow re-initialization on next StartBattle
+        battleId = null;
+        isInitialized = false;
+        _actionLog.Clear();
+        // Note: we don't dispose the shared BattleRealtimeClient here; just reset local state.
+        await Task.CompletedTask;
+    }
+
     public async Task InitializeAsync() {
         if (isInitialized) {
             return;

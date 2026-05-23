@@ -39,6 +39,7 @@
                 <TextBlock Margin="0,8,0,24" HorizontalAlignment="Center" Foreground="#FFD1D5DB" Text="Choose a game mode" />
                 <Button Style="{StaticResource MenuButtonStyle}" Content="Single Player" Click="SinglePlayerButton_Click" />
                 <Button Style="{StaticResource MenuButtonStyle}" Content="Multiplayer (Coming Soon)" IsEnabled="False" />
+                <Button Style="{StaticResource MenuButtonStyle}" Content="Exit" Click="ExitButton_Click" />
             </StackPanel>
         </Border>
     </Grid>
