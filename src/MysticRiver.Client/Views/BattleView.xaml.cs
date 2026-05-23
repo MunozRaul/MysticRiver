@@ -3,6 +3,7 @@ using System.Linq;
 using System.Net.Http;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Media;
 
 using Microsoft.Extensions.DependencyInjection;
 
@@ -123,8 +124,12 @@ public partial class BattleView : UserControl {
         RoundTextBlock.Text = $"Round {state.RoundNumber}";
         PlayerNameTextBlock.Text = state.Creature1.Name;
         EnemyNameTextBlock.Text = state.Creature2.Name;
-        PlayerStatsTextBlock.Text = $"HP {state.Creature1.CurrentHp}/{state.Creature1.MaxHp} | Initiative {state.Creature1.Initiative}";
-        EnemyStatsTextBlock.Text = $"HP {state.Creature2.CurrentHp}/{state.Creature2.MaxHp} | Initiative {state.Creature2.Initiative}";
+
+        // Update player creature stats
+        UpdateCreatureDisplay(state.Creature1, PlayerHpTextBlock, PlayerHpBar, PlayerManaTextBlock, PlayerManaBar, PlayerShieldTextBlock, PlayerCCTextBlock, PlayerStatusPanel);
+
+        // Update enemy creature stats
+        UpdateCreatureDisplay(state.Creature2, EnemyHpTextBlock, EnemyHpBar, EnemyManaTextBlock, EnemyManaBar, EnemyShieldTextBlock, EnemyCCTextBlock, EnemyStatusPanel);
 
         UpdateTurnOrder(state);
 
@@ -136,6 +141,70 @@ public partial class BattleView : UserControl {
         }
         else {
             SetStatus("Battle in progress.");
+        }
+    }
+
+    private void UpdateCreatureDisplay(
+        BattleCreatureDto creature,
+        TextBlock hpTextBlock,
+        Border hpBar,
+        TextBlock manaTextBlock,
+        Border manaBar,
+        TextBlock shieldTextBlock,
+        TextBlock ccTextBlock,
+        StackPanel statusPanel) {
+        
+        // Update HP text and bar
+        hpTextBlock.Text = $"HP {creature.CurrentHp}/{creature.MaxHp}";
+        var hpPercent = creature.MaxHp > 0 ? (double)creature.CurrentHp / creature.MaxHp : 0;
+        var hpParent = hpBar.Parent as Border;
+        var hpMaxWidth = hpParent?.ActualWidth ?? 260; // Fallback to 260 if not yet rendered
+        hpBar.Width = hpPercent * hpMaxWidth;
+        
+        // Update Mana text and bar
+        manaTextBlock.Text = $"Mana {creature.CurrentMana}/{creature.MaxMana}";
+        var manaPercent = creature.MaxMana > 0 ? (double)creature.CurrentMana / creature.MaxMana : 0;
+        var manaParent = manaBar.Parent as Border;
+        var manaMaxWidth = manaParent?.ActualWidth ?? 260; // Fallback to 260 if not yet rendered
+        manaBar.Width = manaPercent * manaMaxWidth;
+        
+        // Update Shield
+        shieldTextBlock.Text = creature.CurrentShield > 0 
+            ? $"Shield {creature.CurrentShield}" 
+            : "Shield 0";
+        
+        // Update Crowd Control
+        ccTextBlock.Text = creature.CrowdControl != CrowdControlKind.None
+            ? $"CC: {creature.CrowdControl} ({creature.CrowdControlTurnsRemaining})"
+            : "CC: None";
+        
+        // Update Status Effects
+        RenderStatusEffects(creature.StatusEffects, statusPanel);
+    }
+
+    private void RenderStatusEffects(IReadOnlyList<StatusEffectStateDto> effects, StackPanel statusPanel) {
+        statusPanel.Children.Clear();
+        
+        if (effects.Count == 0) {
+            return;
+        }
+        
+        foreach (var effect in effects) {
+            var badge = new Border {
+                Padding = new Thickness(6, 3, 6, 3),
+                Margin = new Thickness(0, 0, 4, 0),
+                Background = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromArgb(200, 99, 102, 241)),
+                CornerRadius = new CornerRadius(3)
+            };
+            
+            var textBlock = new TextBlock {
+                Text = $"{effect.Effect} x{effect.Stacks} ({effect.RemainingTurns})",
+                FontSize = 9,
+                Foreground = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromArgb(255, 243, 244, 246))
+            };
+            
+            badge.Child = textBlock;
+            statusPanel.Children.Add(badge);
         }
     }
 
