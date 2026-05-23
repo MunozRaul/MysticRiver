@@ -17,13 +17,13 @@ public partial class BattleView : UserControl {
     private const string enemyId = "enemy";
     private static readonly AbilityOption[] _placeholderAbilities =
     [
-        new("Basic Attack", true, new ExecuteAbilityRequest("basic-attack")),
-        new("Fireball", false, null),
-        new("Ice Lance", false, null),
-        new("Healing Light", false, null),
-        new("Defense Buff", false, null),
-        new("Curse Debuff", false, null),
-        new("End Turn", false, null)
+        new("Basic Attack", true, new ExecuteAbilityRequest("basic-attack"), 0),
+        new("Fireball", false, null, 30),
+        new("Ice Lance", false, null, 25),
+        new("Healing Light", false, null, 20),
+        new("Defense Buff", false, null, 15),
+        new("Curse Debuff", false, null, 20),
+        new("End Turn", false, null, 0)
     ];
 
     private readonly BattleApiClient _battleApiClient;
@@ -33,6 +33,7 @@ public partial class BattleView : UserControl {
     private bool isInitialized;
     private bool isAttackInProgress;
     private string? selectedTarget;
+    private int playerCurrentMana;
 
     public IReadOnlyList<AbilityOption> Abilities => _abilities;
 
@@ -70,6 +71,11 @@ public partial class BattleView : UserControl {
 
         if (!ability.IsEnabled || ability.AbilityRequest is null) {
             SetStatus($"{ability.Label} is a placeholder and not wired yet.");
+            return;
+        }
+
+        if (playerCurrentMana < ability.ManaCost) {
+            SetStatus($"Insufficient mana: {ability.Label} costs {ability.ManaCost} but you only have {playerCurrentMana}.");
             return;
         }
 
@@ -113,6 +119,9 @@ public partial class BattleView : UserControl {
         PlayerNameTextBlock.Text = state.Creature1.Name;
         EnemyNameTextBlock.Text = state.Creature2.Name;
 
+        // Track player mana for button enable/disable
+        playerCurrentMana = state.Creature1.CurrentMana;
+
         // Update player creature stats
         UpdateCreatureDisplay(state.Creature1, PlayerHpTextBlock, PlayerHpBar, PlayerManaTextBlock, PlayerManaBar, PlayerShieldTextBlock, PlayerCCTextBlock, PlayerStatusPanel);
 
@@ -121,6 +130,7 @@ public partial class BattleView : UserControl {
 
         UpdateTurnOrder(state);
         UpdateTargetHighlight();
+        UpdateAbilityButtonStates();
 
         if (state.BattleEnded) {
             var winnerLabel = string.Equals(state.WinnerCreatureId, state.Creature1.CreatureId, StringComparison.OrdinalIgnoreCase)
@@ -285,7 +295,7 @@ public partial class BattleView : UserControl {
         // Self-targeted abilities always target player; others will use selectedTarget
         var targetId = ability.Target == AbilityTarget.Self ? playerId : null;
         var request = new ExecuteAbilityRequest(ability.Id, TargetId: targetId);
-        return new AbilityOption(ability.Name, true, request);
+        return new AbilityOption(ability.Name, true, request, ability.ManaCost);
     }
 
     private void SetAbilities(IEnumerable<AbilityOption> abilities) {
@@ -295,8 +305,25 @@ public partial class BattleView : UserControl {
         }
     }
 
+    private void UpdateAbilityButtonStates() {
+        var updatedAbilities = new List<AbilityOption>();
+        foreach (var ability in _abilities) {
+            var hasEnoughMana = playerCurrentMana >= ability.ManaCost;
+            // Create a new AbilityOption with updated IsEnabled
+            var updatedAbility = ability with { IsEnabled = hasEnoughMana };
+            updatedAbilities.Add(updatedAbility);
+        }
+
+        // Update the collection
+        _abilities.Clear();
+        foreach (var ability in updatedAbilities) {
+            _abilities.Add(ability);
+        }
+    }
+
     public sealed record AbilityOption(
         string Label,
         bool IsEnabled,
-        ExecuteAbilityRequest? AbilityRequest);
+        ExecuteAbilityRequest? AbilityRequest,
+        int ManaCost);
 }
