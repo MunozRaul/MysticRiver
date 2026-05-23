@@ -65,7 +65,8 @@
                     <ColumnDefinition Width="*" />
                 </Grid.ColumnDefinitions>
 
-                <Border Grid.Column="0"
+                <Border x:Name="PlayerCreaturePanel"
+                        Grid.Column="0"
                         Width="280"
                         Padding="10"
                         HorizontalAlignment="Left"
@@ -127,7 +128,8 @@
                     </StackPanel>
                 </Border>
 
-                <Border Grid.Column="2"
+                <Border x:Name="EnemyCreaturePanel"
+                        Grid.Column="2"
                         Width="280"
                         Padding="10"
                         HorizontalAlignment="Right"

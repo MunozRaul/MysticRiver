@@ -32,7 +32,6 @@ public partial class BattleView : UserControl {
     private string? battleId;
     private bool isInitialized;
     private bool isAttackInProgress;
-    private AbilityOption? selectedAbility;
     private string? selectedTarget;
 
     public IReadOnlyList<AbilityOption> Abilities => _abilities;
@@ -78,13 +77,6 @@ public partial class BattleView : UserControl {
             return;
         }
 
-        // If this ability requires target selection, show target UI instead of executing immediately
-        if (ability.RequiresTargetSelection && selectedTarget is null) {
-            selectedAbility = ability;
-            SetStatus($"Select a target for {ability.Label}");
-            return;
-        }
-
         try {
             isAttackInProgress = true;
             SetStatus($"Executing {ability.Label}...");
@@ -96,10 +88,6 @@ public partial class BattleView : UserControl {
 
             var state = await _battleApiClient.ExecuteAbilityAsync(battleId, request);
             ApplyState(state);
-            
-            // Reset target selection after execution
-            selectedAbility = null;
-            selectedTarget = null;
         }
         catch (HttpRequestException exception) {
             SetStatus($"Request failed: {exception.Message}");
@@ -132,6 +120,7 @@ public partial class BattleView : UserControl {
         UpdateCreatureDisplay(state.Creature2, EnemyHpTextBlock, EnemyHpBar, EnemyManaTextBlock, EnemyManaBar, EnemyShieldTextBlock, EnemyCCTextBlock, EnemyStatusPanel);
 
         UpdateTurnOrder(state);
+        UpdateTargetHighlight();
 
         if (state.BattleEnded) {
             var winnerLabel = string.Equals(state.WinnerCreatureId, state.Creature1.CreatureId, StringComparison.OrdinalIgnoreCase)
@@ -234,24 +223,35 @@ public partial class BattleView : UserControl {
     }
 
     private void PlayerCreature_Click(object sender, RoutedEventArgs e) {
-        if (selectedAbility is null || !selectedAbility.RequiresTargetSelection) {
-            return;
-        }
-
         SelectTarget(playerId);
     }
 
     private void EnemyCreature_Click(object sender, RoutedEventArgs e) {
-        if (selectedAbility is null || !selectedAbility.RequiresTargetSelection) {
-            return;
-        }
-
         SelectTarget(enemyId);
     }
 
     private void SelectTarget(string targetId) {
         selectedTarget = targetId;
-        SetStatus($"Target selected. Click to confirm {selectedAbility?.Label}.");
+        var targetName = selectedTarget == playerId ? "You" : "Enemy";
+        SetStatus($"Target selected: {targetName}. Click an ability to attack.");
+        UpdateTargetHighlight();
+    }
+
+    private void UpdateTargetHighlight() {
+        var playerPanel = FindName("PlayerCreaturePanel") as Border;
+        var enemyPanel = FindName("EnemyCreaturePanel") as Border;
+        
+        var goldBrush = new SolidColorBrush(Color.FromArgb(255, 255, 215, 0)); // Gold highlight
+        var playerBlueBrush = new SolidColorBrush(Color.FromArgb(255, 176, 199, 255)); // Original blue
+        var enemyPinkBrush = new SolidColorBrush(Color.FromArgb(255, 255, 188, 200)); // Original pink
+        
+        if (playerPanel is not null) {
+            playerPanel.BorderBrush = selectedTarget == playerId ? goldBrush : playerBlueBrush;
+        }
+        
+        if (enemyPanel is not null) {
+            enemyPanel.BorderBrush = selectedTarget == enemyId ? goldBrush : enemyPinkBrush;
+        }
     }
 
     private void SetStatus(string status) {
@@ -282,11 +282,10 @@ public partial class BattleView : UserControl {
     }
 
     private static AbilityOption CreateAbilityOption(AbilityDefinitionDto ability) {
-        // Enemy-targeted abilities need target selection; self-targeted abilities don't
-        var requiresTargetSelection = ability.Target == AbilityTarget.Enemy;
+        // Self-targeted abilities always target player; others will use selectedTarget
         var targetId = ability.Target == AbilityTarget.Self ? playerId : null;
         var request = new ExecuteAbilityRequest(ability.Id, TargetId: targetId);
-        return new AbilityOption(ability.Name, true, request, requiresTargetSelection);
+        return new AbilityOption(ability.Name, true, request);
     }
 
     private void SetAbilities(IEnumerable<AbilityOption> abilities) {
@@ -299,6 +298,5 @@ public partial class BattleView : UserControl {
     public sealed record AbilityOption(
         string Label,
         bool IsEnabled,
-        ExecuteAbilityRequest? AbilityRequest,
-        bool RequiresTargetSelection = false);
+        ExecuteAbilityRequest? AbilityRequest);
 }
