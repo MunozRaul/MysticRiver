@@ -45,6 +45,7 @@ public partial class BattleView : UserControl {
         _battleApiClient = App.Services.GetRequiredService<BattleApiClient>();
         _battleRealtimeClient = App.Services.GetRequiredService<BattleRealtimeClient>();
         _battleRealtimeClient.BattleStateUpdated += BattleRealtimeClient_BattleStateUpdated;
+        _battleRealtimeClient.Reconnected += BattleRealtimeClient_Reconnected;
         // Keep the action log scrolled to newest (bottom) when new entries arrive
         _actionLog.CollectionChanged += ActionLog_CollectionChanged;
 
@@ -126,6 +127,20 @@ SetAbilities(CreatePlaceholderBattleAbilities());
             }
             ApplyState(battleEvent.State);
         });
+    }
+
+    private async void BattleRealtimeClient_Reconnected(object? _, EventArgs __) {
+        // On reconnect, re-fetch full battle state from the API to avoid missed events.
+        if (battleId is null) { return; }
+        try {
+            SetStatus("Reconnected. Resyncing state...");
+            var state = await _battleApiClient.GetBattleStateAsync(battleId);
+            ApplyState(state);
+            SetStatus("Resync complete.");
+        }
+        catch (Exception ex) {
+            SetStatus($"Resync failed: {ex.Message}");
+        }
     }
 
     private void ActionLog_CollectionChanged(object? sender, NotifyCollectionChangedEventArgs e) {

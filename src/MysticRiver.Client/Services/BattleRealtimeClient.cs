@@ -9,6 +9,7 @@ public sealed class BattleRealtimeClient : IAsyncDisposable {
     private readonly HubConnection _hubConnection;
 
     public event EventHandler<BattleStateUpdatedEvent>? BattleStateUpdated;
+    public event EventHandler? Reconnected;
 
     public BattleRealtimeClient(ClientOptions clientOptions) {
         ArgumentNullException.ThrowIfNull(clientOptions);
@@ -23,10 +24,16 @@ public sealed class BattleRealtimeClient : IAsyncDisposable {
             .WithUrl(hubUrl)
             .WithAutomaticReconnect()
             .Build();
-
+ 
         _hubConnection.On<BattleStateUpdatedEvent>(
             "BattleStateUpdated",
             battleEvent => BattleStateUpdated?.Invoke(this, battleEvent));
+
+        // Forward reconnect notifications so callers can refresh full state if needed
+        _hubConnection.Reconnected += connectionId => {
+            Reconnected?.Invoke(this, EventArgs.Empty);
+            return Task.CompletedTask;
+        };
     }
 
     public async Task EnsureConnectedAsync(CancellationToken cancellationToken = default) {
