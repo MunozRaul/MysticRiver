@@ -55,6 +55,33 @@
                             <TextBlock x:Name="TurnOrderLine4TextBlock" Foreground="#FFF3F4F6" Text="4. Wraith Duelist (Enemy)" />
                         </Border>
                     </StackPanel>
+                    <!-- Action log -->
+                    <TextBlock Margin="0,8,0,0" FontSize="13" FontWeight="Bold" Foreground="#FFE5E7EB" Text="Action Log" />
+                    <Border Margin="0,6,0,0" Background="#1120262E" CornerRadius="6" Padding="6" Height="200">
+                        <ScrollViewer x:Name="ActionLogScrollViewer" VerticalScrollBarVisibility="Auto">
+                            <ItemsControl x:Name="ActionLogItemsControl" ItemsSource="{Binding ActionLog}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <TextBlock TextWrapping="Wrap" FontSize="12" Text="{Binding Text}">
+                                            <TextBlock.Style>
+                                                <Style TargetType="TextBlock">
+                                                    <Setter Property="Foreground" Value="#FFD1D5DB" />
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding IsPlayer}" Value="True">
+                                                            <Setter Property="Foreground" Value="#FF9EEB8F" />
+                                                        </DataTrigger>
+                                                        <DataTrigger Binding="{Binding IsPlayer}" Value="False">
+                                                            <Setter Property="Foreground" Value="#FFF9A8B9" />
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </TextBlock.Style>
+                                        </TextBlock>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </ScrollViewer>
+                    </Border>
                 </StackPanel>
             </Border>
 

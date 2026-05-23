@@ -101,7 +101,7 @@ private async Task<ActionResult<BattleStateDto>> ExecuteBattleActionAsync(
     {
         var result = action();
         _logger.LogInformation("Battle {BattleId}: {ActionType} executed at round {Round}", battleId, actionType, result.State.RoundNumber);
-        var battleEvent = new BattleStateUpdatedEvent(battleId, result.State, result.ActionSummary);
+        var battleEvent = new BattleStateUpdatedEvent(battleId, result.State, result.ActionSummaries);
 
         await _battleHubContext.Clients.Group(battleId).BattleStateUpdated(battleEvent);
         return Ok(result.State);

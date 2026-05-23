@@ -6,6 +6,7 @@ using System.Windows.Controls;
 using System.Windows.Media;
 
 using Microsoft.Extensions.DependencyInjection;
+using System.Collections.Specialized;
 
 using MysticRiver.Client.Services;
 using MysticRiver.Contracts.Battle;
@@ -29,6 +30,7 @@ public partial class BattleView : UserControl {
     private readonly BattleApiClient _battleApiClient;
     private readonly BattleRealtimeClient _battleRealtimeClient;
     private readonly ObservableCollection<AbilityOption> _abilities = new();
+    private readonly ObservableCollection<ActionLogEntry> _actionLog = new();
     private string? battleId;
     private bool isInitialized;
     private bool isAttackInProgress;
@@ -36,14 +38,17 @@ public partial class BattleView : UserControl {
     private int playerCurrentMana;
 
     public IReadOnlyList<AbilityOption> Abilities => _abilities;
+    public ObservableCollection<ActionLogEntry> ActionLog => _actionLog;
 
     public BattleView() {
         InitializeComponent();
         _battleApiClient = App.Services.GetRequiredService<BattleApiClient>();
         _battleRealtimeClient = App.Services.GetRequiredService<BattleRealtimeClient>();
         _battleRealtimeClient.BattleStateUpdated += BattleRealtimeClient_BattleStateUpdated;
+        // Keep the action log scrolled to newest (bottom) when new entries arrive
+        _actionLog.CollectionChanged += ActionLog_CollectionChanged;
 
-        SetAbilities(CreatePlaceholderBattleAbilities());
+SetAbilities(CreatePlaceholderBattleAbilities());
         DataContext = this;
     }
 
@@ -113,7 +118,25 @@ public partial class BattleView : UserControl {
             return;
         }
 
-        _ = Dispatcher.InvokeAsync(() => ApplyState(battleEvent.State));
+        _ = Dispatcher.InvokeAsync(() => {
+            if (battleEvent.ActionSummaries is not null) {
+                foreach (var summary in battleEvent.ActionSummaries) {
+                    AppendActionSummary(summary, battleEvent.State);
+                }
+            }
+            ApplyState(battleEvent.State);
+        });
+    }
+
+    private void ActionLog_CollectionChanged(object? sender, NotifyCollectionChangedEventArgs e) {
+        if (e.Action == NotifyCollectionChangedAction.Add) {
+            _ = Dispatcher.InvokeAsync(() => {
+                try {
+                    ActionLogScrollViewer?.ScrollToEnd();
+                }
+                catch { }
+            });
+        }
     }
 
     private void ApplyState(BattleStateDto state) {
@@ -356,9 +379,64 @@ public partial class BattleView : UserControl {
         }
     }
 
+    private void AppendActionSummary(BattleActionSummaryDto summary, BattleStateDto state) {
+        try {
+            var actorName = summary.ActorId == state.Creature1.CreatureId ? state.Creature1.Name : state.Creature2.Name;
+            var targetName = summary.TargetId is null ? "(self)" : (summary.TargetId == state.Creature1.CreatureId ? state.Creature1.Name : state.Creature2.Name);
+
+            var parts = new List<string>();
+            foreach (var eff in summary.AppliedEffects) {
+                switch (eff.Kind) {
+                    case AppliedEffectKind.Damage:
+                        parts.Add($"{eff.Amount} dmg to {targetName}");
+                        break;
+                    case AppliedEffectKind.Heal:
+                        parts.Add($"{eff.Amount} heal to {targetName}");
+                        break;
+                    case AppliedEffectKind.Shield:
+                        parts.Add($"Shield +{eff.Amount} to {targetName}");
+                        break;
+                    case AppliedEffectKind.ManaRestore:
+                        parts.Add($"Mana +{eff.Amount} to {targetName}");
+                        break;
+                    case AppliedEffectKind.ManaBurn:
+                        parts.Add($"Mana -{eff.Amount} to {targetName}");
+                        break;
+                    case AppliedEffectKind.ManaDrain:
+                        parts.Add($"Mana drain {eff.Amount} from {targetName}");
+                        break;
+                    case AppliedEffectKind.Status:
+                        parts.Add($"Applied {eff.StatusEffect} to {targetName} ({eff.Turns} turns)");
+                        break;
+                    case AppliedEffectKind.CrowdControl:
+                        parts.Add($"{eff.CrowdControl} on {targetName} for {eff.Turns} turns");
+                        break;
+                    case AppliedEffectKind.Lifesteal:
+                        parts.Add($"Lifesteal {eff.Amount} to {actorName}");
+                        break;
+                    default:
+                        parts.Add($"{eff.Kind} on {targetName}");
+                        break;
+                }
+            }
+
+            var actionText = summary.TargetId is null
+                ? $"{actorName} used {summary.Ability.Name}: {string.Join(", ", parts)}"
+                : $"{actorName} used {summary.Ability.Name} on {targetName}: {string.Join(", ", parts)}";
+
+            var isPlayer = summary.ActorId == state.Creature1.CreatureId;
+            _actionLog.Add(new ActionLogEntry(actionText, isPlayer));
+            // Cap log length (remove oldest)
+            while (_actionLog.Count > 200) { _actionLog.RemoveAt(0); }
+        }
+        catch { /* Don't let logging break UI */ }
+    }
+
     public sealed record AbilityOption(
         string Label,
         bool IsEnabled,
         ExecuteAbilityRequest? AbilityRequest,
         int ManaCost);
+
+    public sealed record ActionLogEntry(string Text, bool IsPlayer);
 }

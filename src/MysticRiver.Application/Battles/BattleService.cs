@@ -65,8 +65,13 @@ public sealed class BattleService(IBattleSessionStore battleSessionStore) : IBat
                 ? MapAbility(ability!)
                 : new AbilityDefinitionDto("basic-attack", "Basic Attack", ContractAbilityTarget.Enemy, ContractAbilityTag.Damage, 0);
             var summary = CreateActionSummary(session, abilityDefinition, attackMove);
-            var state = ExecuteTurnWithCounter(session, attacker, attackMove);
-            return new BattleActionResult(state, summary);
+            // Build counter move and its summary so enemy actions are also logged
+            var (counterAttacker, counterTarget) = GetCounterPair(session, attacker);
+            var counterMove = CreateCounterMove(session, counterAttacker, counterTarget);
+            var counterAbility = new AbilityDefinitionDto("counter-attack", "Counter Attack", ContractAbilityTarget.Enemy, ContractAbilityTag.Damage, 0);
+            var counterSummary = CreateActionSummary(session, counterAbility, counterMove);
+            var state = ExecuteTurnWithCounter(session, attackMove, counterMove);
+            return new BattleActionResult(state, new[] { summary, counterSummary });
         }
     }
 
@@ -89,8 +94,12 @@ public sealed class BattleService(IBattleSessionStore battleSessionStore) : IBat
 
             var move = ability.CreateMove(attacker, target);
             var summary = CreateActionSummary(session, MapAbility(ability), move);
-            var state = ExecuteTurnWithCounter(session, attacker, move);
-            return new BattleActionResult(state, summary);
+            var (counterAttacker, counterTarget) = GetCounterPair(session, attacker);
+            var counterMove = CreateCounterMove(session, counterAttacker, counterTarget);
+            var counterAbility = new AbilityDefinitionDto("counter-attack", "Counter Attack", ContractAbilityTarget.Enemy, ContractAbilityTag.Damage, 0);
+            var counterSummary = CreateActionSummary(session, counterAbility, counterMove);
+            var state = ExecuteTurnWithCounter(session, move, counterMove);
+            return new BattleActionResult(state, new[] { summary, counterSummary });
         }
     }
 
@@ -398,11 +407,8 @@ public sealed class BattleService(IBattleSessionStore battleSessionStore) : IBat
         };
     }
 
-    private BattleStateDto ExecuteTurnWithCounter(BattleSession session, Creature attacker, Move move)
+    private BattleStateDto ExecuteTurnWithCounter(BattleSession session, Move move, Move counterMove)
     {
-        var (counterAttacker, counterTarget) = GetCounterPair(session, attacker);
-        var counterMove = CreateCounterMove(session, counterAttacker, counterTarget);
-
         _ = session.Battle.ExecuteTurn(move, counterMove);
         session.AdvanceRound();
 
