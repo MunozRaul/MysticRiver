@@ -3,7 +3,7 @@ using System.Collections.Concurrent;
 using MysticRiver.Contracts.Battle;
 using MysticRiver.Domain;
 
-namespace MysticRiver.HttpApi.Battles;
+namespace MysticRiver.Application.Battles;
 
 public sealed class InMemoryBattleSessionStore : IBattleSessionStore {
     private readonly ConcurrentDictionary<string, BattleSession> _sessions = new(StringComparer.OrdinalIgnoreCase);

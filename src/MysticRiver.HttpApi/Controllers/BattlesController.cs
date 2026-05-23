@@ -3,6 +3,7 @@ using System;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.SignalR;
 
+using MysticRiver.Application.Battles;
 using MysticRiver.Contracts.Battle;
 using MysticRiver.HttpApi.Battles;
 

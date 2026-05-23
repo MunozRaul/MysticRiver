@@ -1,3 +1,4 @@
+using MysticRiver.Application.Battles;
 using MysticRiver.HttpApi.Battles;
 
 using Scalar.AspNetCore;

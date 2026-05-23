@@ -9,7 +9,7 @@ using DomainAbilityTarget = MysticRiver.Domain.AbilityTarget;
 using DomainCrowdControlKind = MysticRiver.Domain.CrowdControlKind;
 using DomainStatusEffect = MysticRiver.Domain.StatusEffect;
 
-namespace MysticRiver.HttpApi.Battles;
+namespace MysticRiver.Application.Battles;
 
 public sealed class BattleService(IBattleSessionStore battleSessionStore) : IBattleService {
     private readonly IBattleSessionStore _battleSessionStore = battleSessionStore;

@@ -1,6 +1,6 @@
 using MysticRiver.Domain;
 
-namespace MysticRiver.HttpApi.Battles;
+namespace MysticRiver.Application.Battles;
 
 public sealed class BattleSession {
     private readonly Dictionary<string, Creature> _creaturesById;
