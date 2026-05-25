@@ -15,7 +15,7 @@ namespace MysticRiver.Client.Views;
 
 public partial class BattleView : UserControl {
     private string playerCreatureId = "player";
-    private const string enemyId = "enemy";    
+    private string enemyCreatureId = "enemy";
     private string playerDisplayName = "Player";
     private bool isMultiplayer;
     private string? currentTurnCreatureId;
@@ -66,6 +66,7 @@ SetAbilities(CreatePlaceholderBattleAbilities());
         isAttackInProgress = false;
         selectedTarget = null;
         playerCurrentMana = 0;
+        enemyCreatureId = "enemy";
         _actionLog.Clear();
         SetAbilities(CreatePlaceholderBattleAbilities());
         // Note: we don't dispose the shared BattleRealtimeClient here; just reset local state.
@@ -90,20 +91,21 @@ SetAbilities(CreatePlaceholderBattleAbilities());
 
         var response = await _battleApiClient.StartBattleAsync();
         battleId = response.BattleId;
-        selectedTarget = enemyId; // Default to enemy target
-        ApplyState(response.State);
 
-        await LoadAbilitiesAsync();
-        // Ensure we have a persisted guest identity and use its display name when joining
-        var identity = App.Services.GetRequiredService<GuestIdentityService>().GetOrCreateIdentity();
-        playerDisplayName = identity.DisplayName;
+                await LoadAbilitiesAsync();
+                // Ensure we have a persisted guest identity and use its display name when joining
+                var identity = App.Services.GetRequiredService<GuestIdentityService>().GetOrCreateIdentity();
+                playerDisplayName = identity.DisplayName;
                 // Use the creature id from the state as the claimed player creature id when joining so server
-        // authorization aligns the token's player id with the creature ids used in action requests.
-        playerCreatureId = response.State.Creature1.CreatureId;
-        var token = await _battleRealtimeClient.JoinBattleAsync(battleId, playerCreatureId, playerDisplayName);
-        _battleApiClient.SetPlayerToken(token);
-        SetStatus($"Connected as {playerDisplayName}. Real-time updates are active. Enemy selected as default target.");
-        isInitialized = true;
+                // authorization aligns the token's player id with the creature ids used in action requests.
+                playerCreatureId = response.State.Creature1.CreatureId;
+                enemyCreatureId = ResolveEnemyCreatureId(response.State);
+                selectedTarget = enemyCreatureId; // Default to enemy target
+                ApplyState(response.State);
+                var token = await _battleRealtimeClient.JoinBattleAsync(battleId, playerCreatureId, playerDisplayName);
+                _battleApiClient.SetPlayerToken(token);
+                SetStatus($"Connected as {playerDisplayName}. Real-time updates are active. Enemy selected as default target.");
+                isInitialized = true;
     }
 
     public async Task InitializeMultiplayerAsync(string battleId, BattleStateDto state, string localCreatureId, string localPlayerId, string localDisplayName) {
@@ -115,7 +117,8 @@ SetAbilities(CreatePlaceholderBattleAbilities());
         playerCreatureId = localCreatureId;
         playerDisplayName = localDisplayName;
         isMultiplayer = true;
-        selectedTarget = enemyId; // Default to enemy target
+        enemyCreatureId = ResolveEnemyCreatureId(state);
+        selectedTarget = enemyCreatureId; // Default to enemy target
         ApplyState(state);
 
         await LoadAbilitiesAsync();
@@ -237,21 +240,23 @@ SetAbilities(CreatePlaceholderBattleAbilities());
     }
 
     private void ApplyState(BattleStateDto state) {
+        enemyCreatureId = ResolveEnemyCreatureId(state);
+        var (playerCreature, enemyCreature) = ResolveCreatures(state);
         RoundTextBlock.Text = $"Round {state.RoundNumber}";
-        PlayerNameTextBlock.Text = state.Creature1.Name;
-        EnemyNameTextBlock.Text = state.Creature2.Name;
+        PlayerNameTextBlock.Text = playerCreature.Name;
+        EnemyNameTextBlock.Text = enemyCreature.Name;
 
         // Track player mana for button enable/disable
-        playerCurrentMana = state.Creature1.CurrentMana;
+        playerCurrentMana = playerCreature.CurrentMana;
 
         // Store current turn info for multiplayer gating
         currentTurnCreatureId = state.CurrentTurnCreatureId;
 
         // Update player creature stats
-        UpdateCreatureDisplay(state.Creature1, PlayerHpTextBlock, PlayerHpBar, PlayerManaTextBlock, PlayerManaBar, PlayerShieldTextBlock, PlayerCCTextBlock, PlayerStatusPanel);
+        UpdateCreatureDisplay(playerCreature, PlayerHpTextBlock, PlayerHpBar, PlayerManaTextBlock, PlayerManaBar, PlayerShieldTextBlock, PlayerCCTextBlock, PlayerStatusPanel);
 
         // Update enemy creature stats
-        UpdateCreatureDisplay(state.Creature2, EnemyHpTextBlock, EnemyHpBar, EnemyManaTextBlock, EnemyManaBar, EnemyShieldTextBlock, EnemyCCTextBlock, EnemyStatusPanel);
+        UpdateCreatureDisplay(enemyCreature, EnemyHpTextBlock, EnemyHpBar, EnemyManaTextBlock, EnemyManaBar, EnemyShieldTextBlock, EnemyCCTextBlock, EnemyStatusPanel);
 
         UpdateTurnOrder(state);
         UpdateTargetHighlight();
@@ -406,7 +411,7 @@ SetAbilities(CreatePlaceholderBattleAbilities());
     }
 
     private void EnemyCreature_Click(object sender, RoutedEventArgs e) {
-        SelectTarget(enemyId);
+        SelectTarget(enemyCreatureId);
     }
 
     private void SelectTarget(string targetId) {
@@ -429,8 +434,19 @@ SetAbilities(CreatePlaceholderBattleAbilities());
         }
         
         if (enemyPanel is not null) {
-            enemyPanel.BorderBrush = selectedTarget == enemyId ? goldBrush : enemyPinkBrush;
+            enemyPanel.BorderBrush = selectedTarget == enemyCreatureId ? goldBrush : enemyPinkBrush;
         }
+    }
+
+    private (BattleCreatureDto Player, BattleCreatureDto Enemy) ResolveCreatures(BattleStateDto state) {
+        return string.Equals(playerCreatureId, state.Creature1.CreatureId, StringComparison.OrdinalIgnoreCase)
+            ? (state.Creature1, state.Creature2)
+            : (state.Creature2, state.Creature1);
+    }
+
+    private string ResolveEnemyCreatureId(BattleStateDto state) {
+        var (_, enemyCreature) = ResolveCreatures(state);
+        return enemyCreature.CreatureId;
     }
 
     private void SetStatus(string status) {

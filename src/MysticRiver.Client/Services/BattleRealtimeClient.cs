@@ -1,3 +1,5 @@
+using System.Threading;
+
 using Microsoft.AspNetCore.SignalR.Client;
 
 using MysticRiver.Client.Options;
@@ -7,6 +9,8 @@ namespace MysticRiver.Client.Services;
 
 public sealed class BattleRealtimeClient : IAsyncDisposable {
     private readonly HubConnection _hubConnection;
+    private readonly SemaphoreSlim _connectionLock = new(1, 1);
+    private Task? _connectionStartTask;
     private string? _joinedBattleId;
     private string? _joinedPlayerId;
     private string? _joinedDisplayName;
@@ -50,7 +54,33 @@ public sealed class BattleRealtimeClient : IAsyncDisposable {
             return;
         }
 
-        await _hubConnection.StartAsync(cancellationToken);
+        await _connectionLock.WaitAsync(cancellationToken);
+        try {
+            if (_hubConnection.State == HubConnectionState.Connected) {
+                return;
+            }
+
+            if (_hubConnection.State == HubConnectionState.Disconnected) {
+                _connectionStartTask = _hubConnection.StartAsync(cancellationToken);
+            }
+        }
+        finally {
+            _connectionLock.Release();
+        }
+
+        if (_connectionStartTask is not null) {
+            await _connectionStartTask;
+            return;
+        }
+
+        while (_hubConnection.State is HubConnectionState.Connecting or HubConnectionState.Reconnecting) {
+            await Task.Delay(100, cancellationToken);
+        }
+
+        if (_hubConnection.State == HubConnectionState.Disconnected) {
+            _connectionStartTask = _hubConnection.StartAsync(cancellationToken);
+            await _connectionStartTask;
+        }
     }
 
     public async Task<string> JoinBattleAsync(string battleId, string playerId, string displayName, CancellationToken cancellationToken = default) {
@@ -70,6 +100,7 @@ public sealed class BattleRealtimeClient : IAsyncDisposable {
         }
 
         await _hubConnection.StopAsync(cancellationToken);
+        _connectionStartTask = null;
         _joinedBattleId = null;
         _joinedPlayerId = null;
         _joinedDisplayName = null;
