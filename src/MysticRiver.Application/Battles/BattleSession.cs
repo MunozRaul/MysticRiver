@@ -7,6 +7,7 @@ public sealed class BattleSession {
     private readonly Dictionary<string, Creature> _creaturesById;
     private readonly object _syncRoot = new();
     private string? _forcedWinnerCreatureId;
+    private BattleEndReason _forcedEndReason = BattleEndReason.None;
     private string? _currentTurnCreatureId;
 
     public string BattleId { get; }
@@ -19,6 +20,7 @@ public sealed class BattleSession {
     public string? GuestPlayerId { get; private set; }
     public string? CurrentTurnCreatureId => _currentTurnCreatureId;
     public string? ForcedWinnerCreatureId => _forcedWinnerCreatureId;
+    public BattleEndReason ForcedEndReason => _forcedEndReason;
     public bool IsConcluded => _forcedWinnerCreatureId is not null || Battle.IsOver;
     public object SyncRoot => _syncRoot;
 
@@ -123,6 +125,22 @@ public sealed class BattleSession {
         var abandoningCreature = GetRequiredCreature(abandoningCreatureId);
         var winnerCreature = ReferenceEquals(abandoningCreature, Battle.Creature1) ? Battle.Creature2 : Battle.Creature1;
         _forcedWinnerCreatureId = GetCreatureId(winnerCreature);
+        _forcedEndReason = BattleEndReason.Forfeit;
+        MatchStatus = MatchStatus.Completed;
+        StateVersion++;
+    }
+
+    public void EndByDisconnect(string disconnectedCreatureId) {
+        ArgumentException.ThrowIfNullOrWhiteSpace(disconnectedCreatureId);
+
+        if (IsConcluded) {
+            throw new InvalidOperationException("Battle is already over.");
+        }
+
+        var disconnectedCreature = GetRequiredCreature(disconnectedCreatureId);
+        var winnerCreature = ReferenceEquals(disconnectedCreature, Battle.Creature1) ? Battle.Creature2 : Battle.Creature1;
+        _forcedWinnerCreatureId = GetCreatureId(winnerCreature);
+        _forcedEndReason = BattleEndReason.Disconnect;
         MatchStatus = MatchStatus.Completed;
         StateVersion++;
     }

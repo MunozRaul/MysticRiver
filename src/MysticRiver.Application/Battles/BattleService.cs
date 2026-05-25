@@ -270,10 +270,18 @@ public sealed class BattleService(IBattleSessionStore battleSessionStore) : IBat
         var creature2Id = session.GetCreatureId(session.Battle.Creature2);
         var creature1 = MapCreature(session.Battle.Creature1, creature1Id);
         var creature2 = MapCreature(session.Battle.Creature2, creature2Id);
+        var endReason = BattleEndReason.None;
         var winnerId = session.ForcedWinnerCreatureId
             ?? (session.Battle.TryGetResult(out var result)
                 ? session.GetCreatureId(result!.Winner)
                 : null);
+
+        if (session.ForcedWinnerCreatureId is not null) {
+            endReason = session.ForcedEndReason;
+        }
+        else if (session.Battle.TryGetResult(out var _)) {
+            endReason = BattleEndReason.Eliminated;
+        }
 
         return new BattleStateDto(
             session.BattleId,
@@ -283,7 +291,8 @@ public sealed class BattleService(IBattleSessionStore battleSessionStore) : IBat
             creature2,
             session.IsConcluded,
             winnerId,
-            session.MatchStatus);
+            session.MatchStatus,
+            endReason);
     }
 
     private static BattleCreatureDto MapCreature(Creature creature, string creatureId) {

@@ -209,7 +209,13 @@ SetAbilities(CreatePlaceholderBattleAbilities());
             var winnerLabel = string.Equals(state.WinnerCreatureId, state.Creature1.CreatureId, StringComparison.OrdinalIgnoreCase)
                 ? state.Creature1.Name
                 : state.Creature2.Name;
-            SetStatus($"Battle ended. Winner: {winnerLabel}.");
+            var reasonText = state.EndReason switch {
+                BattleEndReason.Forfeit => "forfeit",
+                BattleEndReason.Disconnect => "disconnect",
+                BattleEndReason.Eliminated => "elimination",
+                _ => "battle resolution"
+            };
+            SetStatus($"Battle ended ({reasonText}). Winner: {winnerLabel}.");
         }
         else {
             SetStatus("Battle in progress.");
