@@ -10,12 +10,12 @@ public sealed class BattleHub : Hub<IBattleClient> {
     }
 
     // Returns an ephemeral token the client should use for subsequent HTTP calls
-    public Task<string> JoinBattle(string battleId, string playerId) {
+    public Task<string> JoinBattle(string battleId, string playerId, string? displayName = null) {
         ArgumentException.ThrowIfNullOrWhiteSpace(battleId);
         ArgumentException.ThrowIfNullOrWhiteSpace(playerId);
 
-        _connectionMapping.Register(Context.ConnectionId, battleId, playerId);
-        var token = _connectionMapping.CreateToken(Context.ConnectionId, battleId, playerId);
+        _connectionMapping.Register(Context.ConnectionId, battleId, playerId, displayName);
+        var token = _connectionMapping.CreateToken(Context.ConnectionId, battleId, playerId, displayName);
         return Task.FromResult(token);
     }
 

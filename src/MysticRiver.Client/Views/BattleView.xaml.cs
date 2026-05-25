@@ -14,8 +14,9 @@ using MysticRiver.Contracts.Battle;
 namespace MysticRiver.Client.Views;
 
 public partial class BattleView : UserControl {
-    private const string playerId = "player";
-    private const string enemyId = "enemy";
+    private string playerCreatureId = "player";
+    private const string enemyId = "enemy";    
+    private string playerDisplayName = "Player";
     private static readonly AbilityOption[] _placeholderAbilities =
     [
         new("Basic Attack", true, new ExecuteAbilityRequest("basic-attack"), 0),
@@ -73,7 +74,7 @@ SetAbilities(CreatePlaceholderBattleAbilities());
         }
 
         SetStatus("Abandoning match...");
-        await _battleApiClient.AbandonBattleAsync(battleId, new AbandonBattleRequest(playerId));
+        await _battleApiClient.AbandonBattleAsync(battleId, new AbandonBattleRequest(playerCreatureId));
         await _battleRealtimeClient.DisconnectAsync();
         await CleanupAsync();
     }
@@ -89,9 +90,15 @@ SetAbilities(CreatePlaceholderBattleAbilities());
         ApplyState(response.State);
 
         await LoadAbilitiesAsync();
-        var token = await _battleRealtimeClient.JoinBattleAsync(battleId, playerId);
+        // Ensure we have a persisted guest identity and use its display name when joining
+        var identity = App.Services.GetRequiredService<GuestIdentityService>().GetOrCreateIdentity();
+        playerDisplayName = identity.DisplayName;
+                // Use the creature id from the state as the claimed player creature id when joining so server
+        // authorization aligns the token's player id with the creature ids used in action requests.
+        playerCreatureId = response.State.Creature1.CreatureId;
+        var token = await _battleRealtimeClient.JoinBattleAsync(battleId, playerCreatureId, playerDisplayName);
         _battleApiClient.SetPlayerToken(token);
-        SetStatus("Connected. Real-time updates are active. Enemy selected as default target.");
+        SetStatus($"Connected as {playerDisplayName}. Real-time updates are active. Enemy selected as default target.");
         isInitialized = true;
     }
 
@@ -332,7 +339,7 @@ SetAbilities(CreatePlaceholderBattleAbilities());
     }
 
     private void PlayerCreature_Click(object sender, RoutedEventArgs e) {
-        SelectTarget(playerId);
+        SelectTarget(playerCreatureId);
     }
 
     private void EnemyCreature_Click(object sender, RoutedEventArgs e) {
@@ -341,7 +348,7 @@ SetAbilities(CreatePlaceholderBattleAbilities());
 
     private void SelectTarget(string targetId) {
         selectedTarget = targetId;
-        var targetName = selectedTarget == playerId ? "You" : "Enemy";
+        var targetName = selectedTarget == playerCreatureId ? "You" : "Enemy";
         SetStatus($"Target selected: {targetName}. Click an ability to attack.");
         UpdateTargetHighlight();
     }
@@ -355,7 +362,7 @@ SetAbilities(CreatePlaceholderBattleAbilities());
         var enemyPinkBrush = new SolidColorBrush(Color.FromArgb(255, 255, 188, 200)); // Original pink
         
         if (playerPanel is not null) {
-            playerPanel.BorderBrush = selectedTarget == playerId ? goldBrush : playerBlueBrush;
+            playerPanel.BorderBrush = selectedTarget == playerCreatureId ? goldBrush : playerBlueBrush;
         }
         
         if (enemyPanel is not null) {
@@ -390,10 +397,10 @@ SetAbilities(CreatePlaceholderBattleAbilities());
         }
     }
 
-    private static AbilityOption CreateAbilityOption(AbilityDefinitionDto ability) {
+    private AbilityOption CreateAbilityOption(AbilityDefinitionDto ability) {
         // Self-targeted abilities always target player; others will use selectedTarget
-        var targetId = ability.Target == AbilityTarget.Self ? playerId : null;
-        var request = new ExecuteAbilityRequest(ability.Id, TargetId: targetId);
+        var targetId = ability.Target == AbilityTarget.Self ? playerCreatureId : null;
+        var request = new ExecuteAbilityRequest(ability.Id, playerCreatureId, TargetId: targetId);
         return new AbilityOption(ability.Name, true, request, ability.ManaCost);
     }
 

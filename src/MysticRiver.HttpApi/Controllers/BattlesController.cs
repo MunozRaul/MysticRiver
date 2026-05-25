@@ -59,7 +59,7 @@ public sealed class BattlesController(
             return StatusCode(403, CreateProblem("Unauthorized", "Missing player token."));
         }
         var token = tokenValues.FirstOrDefault();
-        if (string.IsNullOrWhiteSpace(token) || !_connectionMapping.TryGetByToken(token, out var tokBattle, out var tokPlayer) || tokBattle != battleId) {
+        if (string.IsNullOrWhiteSpace(token) || !_connectionMapping.TryGetByToken(token, out var tokBattle, out var tokPlayer, out var tokDisplayName) || tokBattle != battleId) {
             _logger.LogWarning("Invalid or expired token for abandon on battle {BattleId}", battleId);
             return StatusCode(403, CreateProblem("Unauthorized", "Invalid or expired player token."));
         }
@@ -95,7 +95,7 @@ public sealed class BattlesController(
             return StatusCode(403, CreateProblem("Unauthorized", "Missing player token."));
         }
         var token = tokenValues.FirstOrDefault();
-        if (string.IsNullOrWhiteSpace(token) || !_connectionMapping.TryGetByToken(token, out var tokBattle, out var tokPlayer) || tokBattle != battleId) {
+        if (string.IsNullOrWhiteSpace(token) || !_connectionMapping.TryGetByToken(token, out var tokBattle, out var tokPlayer, out var tokDisplayName) || tokBattle != battleId) {
             _logger.LogWarning("Invalid or expired token for basic-attack on battle {BattleId}", battleId);
             return StatusCode(403, CreateProblem("Unauthorized", "Invalid or expired player token."));
         }
@@ -125,7 +125,7 @@ public sealed class BattlesController(
             return StatusCode(403, CreateProblem("Unauthorized", "Missing player token."));
         }
         var token = tokenValues.FirstOrDefault();
-        if (string.IsNullOrWhiteSpace(token) || !_connectionMapping.TryGetByToken(token, out var tokBattle, out var tokPlayer) || tokBattle != battleId) {
+        if (string.IsNullOrWhiteSpace(token) || !_connectionMapping.TryGetByToken(token, out var tokBattle, out var tokPlayer, out var tokDisplayName) || tokBattle != battleId) {
             _logger.LogWarning("Invalid or expired token for ability on battle {BattleId}", battleId);
             return StatusCode(403, CreateProblem("Unauthorized", "Invalid or expired player token."));
         }
