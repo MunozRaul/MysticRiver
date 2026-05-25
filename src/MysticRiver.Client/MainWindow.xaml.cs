@@ -13,7 +13,7 @@ namespace MysticRiver.Client;
 public partial class MainWindow : Window {
     private readonly BattleApiClient _battleApiClient;
     private readonly GuestIdentityService _guestIdentityService;
-    private CancellationTokenSource? _waitingCts;
+    private CancellationTokenSource? waitingCts;
 
     public MainWindow() {
         InitializeComponent();
@@ -58,8 +58,8 @@ public partial class MainWindow : Window {
 
     private async void MenuView_MultiplayerHostRequested(object? sender, EventArgs e) {
         try {
-            _waitingCts?.Cancel();
-            _waitingCts = new CancellationTokenSource();
+            waitingCts?.Cancel();
+            waitingCts = new CancellationTokenSource();
 
             var identity = _guestIdentityService.GetOrCreateIdentity();
             var created = await _battleApiClient.CreateMatchAsync(new CreateMatchRequest(
@@ -74,7 +74,7 @@ public partial class MainWindow : Window {
                 created.MatchStatus.ToString(),
                 "Waiting for guest...");
 
-            _ = WaitForOpponentAndStartAsync(created.BattleId, identity.PlayerId, identity.DisplayName, created.HostCreatureId, _waitingCts.Token);
+            _ = WaitForOpponentAndStartAsync(created.BattleId, identity.PlayerId, identity.DisplayName, created.HostCreatureId, waitingCts.Token);
         }
         catch (Exception exception) {
             MessageBox.Show(exception.Message, "Host setup failed", MessageBoxButton.OK, MessageBoxImage.Error);
@@ -96,7 +96,7 @@ public partial class MainWindow : Window {
     }
 
     private void MenuView_WaitingCancelled(object? sender, EventArgs e) {
-        _waitingCts?.Cancel();
+        waitingCts?.Cancel();
         MenuView.ShowModeSelection();
     }
 
@@ -129,7 +129,7 @@ public partial class MainWindow : Window {
         string localCreatureId,
         string localPlayerId,
         string localDisplayName) {
-        _waitingCts?.Cancel();
+        waitingCts?.Cancel();
         MenuView.Visibility = Visibility.Collapsed;
         BattleView.Visibility = Visibility.Visible;
         PauseView.Visibility = Visibility.Collapsed;
