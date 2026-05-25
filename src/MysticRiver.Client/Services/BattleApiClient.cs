@@ -22,6 +22,23 @@ public sealed class BattleApiClient(HttpClient httpClient) {
         return result ?? throw new InvalidOperationException("Battle start response was empty.");
     }
 
+    public async Task<CreateMatchResponse> CreateMatchAsync(CreateMatchRequest request, CancellationToken cancellationToken = default) {
+        ArgumentNullException.ThrowIfNull(request);
+        using var response = await _httpClient.PostAsJsonAsync("api/battles/matches/create", request, cancellationToken);
+        response.EnsureSuccessStatusCode();
+        var result = await response.Content.ReadFromJsonAsync<CreateMatchResponse>(cancellationToken: cancellationToken);
+        return result ?? throw new InvalidOperationException("Create match response was empty.");
+    }
+
+    public async Task<JoinMatchResponse> JoinMatchAsync(string battleId, JoinMatchRequest request, CancellationToken cancellationToken = default) {
+        ArgumentException.ThrowIfNullOrWhiteSpace(battleId);
+        ArgumentNullException.ThrowIfNull(request);
+        using var response = await _httpClient.PostAsJsonAsync($"api/battles/{battleId}/matches/join", request, cancellationToken);
+        response.EnsureSuccessStatusCode();
+        var result = await response.Content.ReadFromJsonAsync<JoinMatchResponse>(cancellationToken: cancellationToken);
+        return result ?? throw new InvalidOperationException("Join match response was empty.");
+    }
+
     public async Task<IReadOnlyList<AbilityDefinitionDto>> GetAbilitiesAsync(CancellationToken cancellationToken = default)
     {
             using var request = new HttpRequestMessage(HttpMethod.Get, "api/battles/abilities");

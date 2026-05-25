@@ -17,6 +17,8 @@ public partial class BattleView : UserControl {
     private string playerCreatureId = "player";
     private const string enemyId = "enemy";    
     private string playerDisplayName = "Player";
+    private bool isMultiplayer;
+    private string? currentTurnCreatureId;
     private static readonly AbilityOption[] _placeholderAbilities =
     [
         new("Basic Attack", true, new ExecuteAbilityRequest("basic-attack"), 0),
@@ -101,6 +103,25 @@ SetAbilities(CreatePlaceholderBattleAbilities());
         var token = await _battleRealtimeClient.JoinBattleAsync(battleId, playerCreatureId, playerDisplayName);
         _battleApiClient.SetPlayerToken(token);
         SetStatus($"Connected as {playerDisplayName}. Real-time updates are active. Enemy selected as default target.");
+        isInitialized = true;
+    }
+
+    public async Task InitializeMultiplayerAsync(string battleId, BattleStateDto state, string localCreatureId, string localPlayerId, string localDisplayName) {
+        if (isInitialized) {
+            return;
+        }
+
+        this.battleId = battleId;
+        playerCreatureId = localCreatureId;
+        playerDisplayName = localDisplayName;
+        isMultiplayer = true;
+        selectedTarget = enemyId; // Default to enemy target
+        ApplyState(state);
+
+        await LoadAbilitiesAsync();
+        var token = await _battleRealtimeClient.JoinBattleAsync(battleId, localPlayerId, localDisplayName);
+        _battleApiClient.SetPlayerToken(token);
+        SetStatus($"Connected as {playerDisplayName} (multiplayer). Turn-based battle in progress.");
         isInitialized = true;
     }
 
@@ -222,6 +243,9 @@ SetAbilities(CreatePlaceholderBattleAbilities());
 
         // Track player mana for button enable/disable
         playerCurrentMana = state.Creature1.CurrentMana;
+
+        // Store current turn info for multiplayer gating
+        currentTurnCreatureId = state.CurrentTurnCreatureId;
 
         // Update player creature stats
         UpdateCreatureDisplay(state.Creature1, PlayerHpTextBlock, PlayerHpBar, PlayerManaTextBlock, PlayerManaBar, PlayerShieldTextBlock, PlayerCCTextBlock, PlayerStatusPanel);
@@ -354,7 +378,7 @@ SetAbilities(CreatePlaceholderBattleAbilities());
         }
 
         var highlights = new[] {
-            new SolidColorBrush(Color.FromArgb(255, 255, 215, 0)), // gold - next turn
+            new SolidColorBrush(Color.FromArgb(255, 255, 215, 0)), // gold - next turn (or current turn in multiplayer)
             new SolidColorBrush(Color.FromArgb(102, 40, 49, 73)),
             new SolidColorBrush(Color.FromArgb(102, 60, 42, 54)),
             new SolidColorBrush(Color.FromArgb(102, 40, 49, 73))
@@ -367,8 +391,13 @@ SetAbilities(CreatePlaceholderBattleAbilities());
             var c = sequence[i];
             var tb = tbs[i];
             var bd = borders[i];
-            if (tb is not null) { tb.Text = $"{i + 1}. {c.Name} ({c.EffectiveInitiative})"; }
-            if (bd is not null) { bd.Background = highlights[i]; }
+            var isCurrentTurn = isMultiplayer && string.Equals(c.CreatureId, currentTurnCreatureId, StringComparison.OrdinalIgnoreCase);
+            var highlightIndex = i == 0 || isCurrentTurn ? 0 : i;
+            if (tb is not null) {
+                var indicator = isCurrentTurn ? " ★" : "";
+                tb.Text = $"{i + 1}. {c.Name} ({c.EffectiveInitiative}){indicator}";
+            }
+            if (bd is not null) { bd.Background = highlights[highlightIndex]; }
         }
     }
 
@@ -446,11 +475,13 @@ SetAbilities(CreatePlaceholderBattleAbilities());
     }
 
     private void UpdateAbilityButtonStates() {
+        var isPlayerTurn = !isMultiplayer || string.Equals(currentTurnCreatureId, playerCreatureId, StringComparison.OrdinalIgnoreCase);
         var updatedAbilities = new List<AbilityOption>();
         foreach (var ability in _abilities) {
             var hasEnoughMana = playerCurrentMana >= ability.ManaCost;
+            var canUse = hasEnoughMana && isPlayerTurn;
             // Create a new AbilityOption with updated IsEnabled
-            var updatedAbility = ability with { IsEnabled = hasEnoughMana };
+            var updatedAbility = ability with { IsEnabled = canUse };
             updatedAbilities.Add(updatedAbility);
         }
 
@@ -458,6 +489,10 @@ SetAbilities(CreatePlaceholderBattleAbilities());
         _abilities.Clear();
         foreach (var ability in updatedAbilities) {
             _abilities.Add(ability);
+        }
+
+        if (isMultiplayer && !isPlayerTurn) {
+            SetStatus("Waiting for opponent's turn...");
         }
     }
 

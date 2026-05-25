@@ -49,6 +49,9 @@ public sealed class BattleService(IBattleSessionStore battleSessionStore) : IBat
 
         lock (session.SyncRoot) {
             session.JoinGuest(request.GuestPlayerId);
+            if (!string.IsNullOrWhiteSpace(request.GuestDisplayName)) {
+                session.Battle.Creature2.Name = request.GuestDisplayName;
+            }
 
             var hostPlayerId = session.HostPlayerId
                 ?? throw new InvalidOperationException("Host player assignment is missing for this match.");
@@ -310,6 +313,7 @@ public sealed class BattleService(IBattleSessionStore battleSessionStore) : IBat
             session.StateVersion,
             creature1,
             creature2,
+            session.CurrentTurnCreatureId,
             session.IsConcluded,
             winnerId,
             session.MatchStatus,
