@@ -102,6 +102,27 @@ public sealed class BattleService(IBattleSessionStore battleSessionStore) : IBat
         }
     }
 
+    public void ValidateRealtimeJoin(string battleId, string playerId)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(battleId);
+        ArgumentException.ThrowIfNullOrWhiteSpace(playerId);
+        var session = GetRequiredSession(battleId);
+
+        lock (session.SyncRoot)
+        {
+            if (session.IsMultiplayerMatch()) {
+                _ = session.GetAssignedCreatureIdForPlayer(playerId);
+                return;
+            }
+
+            if (session.HostPlayerId is not null && string.Equals(session.HostPlayerId, playerId, StringComparison.OrdinalIgnoreCase)) {
+                return;
+            }
+
+            _ = session.GetRequiredCreature(playerId);
+        }
+    }
+
     public BattleActionResult AbandonBattle(string battleId, AbandonBattleRequest request, string? actingPlayerId = null)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(battleId);

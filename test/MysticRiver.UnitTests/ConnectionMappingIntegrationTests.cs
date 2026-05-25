@@ -126,6 +126,7 @@ public class ConnectionMappingTests {
 
     private sealed class FakeBattleClient : IBattleClient {
         public Task BattleStateUpdated(BattleStateUpdatedEvent battleStateUpdatedEvent) => Task.CompletedTask;
+        public Task BattleLifecycleUpdated(BattleLifecycleEvent battleLifecycleEvent) => Task.CompletedTask;
     }
 
     private sealed class FakeGroupManager : IGroupManager {

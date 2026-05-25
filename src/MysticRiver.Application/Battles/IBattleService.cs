@@ -8,6 +8,7 @@ public interface IBattleService {
     StartBattleResponse StartBattle(StartBattleRequest request);
     BattleStateDto GetBattleState(string battleId);
     bool RequiresPlayerToken(string battleId);
+    void ValidateRealtimeJoin(string battleId, string playerId);
     IReadOnlyList<AbilityDefinitionDto> GetAbilities();
     BattleActionResult ExecuteBasicAttack(string battleId, ExecuteBasicAttackRequest request, string? actingPlayerId = null);
     BattleActionResult ExecuteAbility(string battleId, ExecuteAbilityRequest request, string? actingPlayerId = null);

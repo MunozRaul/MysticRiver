@@ -231,6 +231,13 @@ public sealed class BattlesController(
             var battleEvent = new BattleStateUpdatedEvent(battleId, result.State, result.ActionSummaries);
 
             await _battleHubContext.Clients.Group(battleId).BattleStateUpdated(battleEvent);
+            if (result.State.BattleEnded) {
+                await _battleHubContext.Clients.Group(battleId).BattleLifecycleUpdated(new BattleLifecycleEvent(
+                    battleId,
+                    BattleLifecycleEventKind.BattleEnded,
+                    EndReason: result.State.EndReason,
+                    WinnerCreatureId: result.State.WinnerCreatureId));
+            }
             return Ok(result.State);
         }
         catch (KeyNotFoundException exception)

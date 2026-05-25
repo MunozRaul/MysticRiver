@@ -46,6 +46,8 @@ public partial class BattleView : UserControl {
         _battleApiClient = App.Services.GetRequiredService<BattleApiClient>();
         _battleRealtimeClient = App.Services.GetRequiredService<BattleRealtimeClient>();
         _battleRealtimeClient.BattleStateUpdated += BattleRealtimeClient_BattleStateUpdated;
+        _battleRealtimeClient.BattleLifecycleUpdated += BattleRealtimeClient_BattleLifecycleUpdated;
+        _battleRealtimeClient.PlayerTokenRefreshed += BattleRealtimeClient_PlayerTokenRefreshed;
         _battleRealtimeClient.Reconnected += BattleRealtimeClient_Reconnected;
         // Keep the action log scrolled to newest (bottom) when new entries arrive
         _actionLog.CollectionChanged += ActionLog_CollectionChanged;
@@ -160,6 +162,32 @@ SetAbilities(CreatePlaceholderBattleAbilities());
             }
             ApplyState(battleEvent.State);
         });
+    }
+
+    private void BattleRealtimeClient_BattleLifecycleUpdated(object? _, BattleLifecycleEvent lifecycleEvent) {
+        if (battleId is null || !string.Equals(battleId, lifecycleEvent.BattleId, StringComparison.OrdinalIgnoreCase)) {
+            return;
+        }
+
+        _ = Dispatcher.InvokeAsync(() => {
+            var status = lifecycleEvent.Kind switch {
+                BattleLifecycleEventKind.OpponentJoined => $"{lifecycleEvent.DisplayName ?? "Opponent"} joined the battle.",
+                BattleLifecycleEventKind.BattleStarted => "Both players are connected. Battle started.",
+                BattleLifecycleEventKind.OpponentDisconnected => $"{lifecycleEvent.DisplayName ?? "Opponent"} disconnected.",
+                BattleLifecycleEventKind.BattleEnded => lifecycleEvent.EndReason switch {
+                    BattleEndReason.Forfeit => "Battle ended by forfeit.",
+                    BattleEndReason.Disconnect => "Battle ended by disconnect.",
+                    BattleEndReason.Eliminated => "Battle ended by elimination.",
+                    _ => "Battle ended."
+                },
+                _ => "Battle event received."
+            };
+            SetStatus(status);
+        });
+    }
+
+    private void BattleRealtimeClient_PlayerTokenRefreshed(object? _, string token) {
+        _battleApiClient.SetPlayerToken(token);
     }
 
     private async void BattleRealtimeClient_Reconnected(object? _, EventArgs __) {

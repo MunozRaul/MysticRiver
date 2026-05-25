@@ -37,6 +37,20 @@ public sealed class ConnectionMappingService : IConnectionMapping {
         return _map.Where(kv => kv.Value.BattleId == battleId).Select(kv => (kv.Key, kv.Value.PlayerId, kv.Value.DisplayName));
     }
 
+    public bool TryGetRegistration(string connectionId, out string? battleId, out string? playerId, out string? displayName) {
+        battleId = null;
+        playerId = null;
+        displayName = null;
+        if (!_map.TryGetValue(connectionId, out var value)) {
+            return false;
+        }
+
+        battleId = value.BattleId;
+        playerId = value.PlayerId;
+        displayName = value.DisplayName;
+        return true;
+    }
+
     public string CreateToken(string connectionId, string battleId, string playerId, string? displayName = null, bool singleUse = false) {
         var token = Guid.NewGuid().ToString("N");
         _tokens[token] = (connectionId, battleId, playerId, displayName, DateTimeOffset.UtcNow, singleUse);

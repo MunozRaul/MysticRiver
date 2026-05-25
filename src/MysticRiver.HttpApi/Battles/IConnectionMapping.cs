@@ -8,6 +8,7 @@ public interface IConnectionMapping {
     bool TryGetPlayer(string connectionId, out string? playerId);
     IEnumerable<string> GetConnectionsForBattle(string battleId);
     IEnumerable<(string ConnectionId, string PlayerId, string? DisplayName)> GetConnectionsForBattleWithPlayers(string battleId);
+    bool TryGetRegistration(string connectionId, out string? battleId, out string? playerId, out string? displayName);
 
     // Token-based ephemeral authentication for HTTP action calls
     string CreateToken(string connectionId, string battleId, string playerId, string? displayName = null, bool singleUse = false);
