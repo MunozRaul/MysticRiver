@@ -14,6 +14,62 @@ namespace MysticRiver.Application.Battles;
 public sealed class BattleService(IBattleSessionStore battleSessionStore) : IBattleService {
     private readonly IBattleSessionStore _battleSessionStore = battleSessionStore;
 
+    public CreateMatchResponse CreateMatch(CreateMatchRequest request) {
+        ArgumentNullException.ThrowIfNull(request);
+        ArgumentException.ThrowIfNullOrWhiteSpace(request.HostPlayerId);
+
+        var startBattleRequest = new StartBattleRequest(
+            request.HostDisplayName,
+            request.OpponentDisplayName,
+            request.HostMaxHp,
+            request.OpponentMaxHp,
+            request.HostInitiative,
+            request.OpponentInitiative,
+            request.OpponentAttackPower);
+
+        var session = _battleSessionStore.Create(startBattleRequest);
+        lock (session.SyncRoot) {
+            session.InitializeLobby(request.HostPlayerId);
+            var state = MapState(session);
+            return new CreateMatchResponse(
+                session.BattleId,
+                session.MatchStatus,
+                request.HostPlayerId,
+                BattleParticipantIds.Player,
+                state);
+        }
+    }
+
+    public JoinMatchResponse JoinMatch(string battleId, JoinMatchRequest request) {
+        ArgumentException.ThrowIfNullOrWhiteSpace(battleId);
+        ArgumentNullException.ThrowIfNull(request);
+        ArgumentException.ThrowIfNullOrWhiteSpace(request.GuestPlayerId);
+
+        var session = GetRequiredSession(battleId);
+
+        lock (session.SyncRoot) {
+            session.JoinGuest(request.GuestPlayerId);
+            if (!string.IsNullOrWhiteSpace(request.GuestDisplayName)) {
+                session.Battle.Creature2.Name = request.GuestDisplayName;
+            }
+
+            var hostPlayerId = session.HostPlayerId
+                ?? throw new InvalidOperationException("Host player assignment is missing for this match.");
+            var guestPlayerId = session.GuestPlayerId
+                ?? throw new InvalidOperationException("Guest player assignment is missing for this match.");
+            var state = MapState(session);
+
+            return new JoinMatchResponse(
+                session.BattleId,
+                session.MatchStatus,
+                hostPlayerId,
+                guestPlayerId,
+                BattleParticipantIds.Player,
+                BattleParticipantIds.Enemy,
+                state);
+        }
+    }
+
     public StartBattleResponse StartBattle(StartBattleRequest request) {
         ArgumentNullException.ThrowIfNull(request);
         var session = _battleSessionStore.Create(request);
@@ -38,7 +94,39 @@ public sealed class BattleService(IBattleSessionStore battleSessionStore) : IBat
         }
     }
 
-    public BattleActionResult AbandonBattle(string battleId, AbandonBattleRequest request)
+    public bool RequiresPlayerToken(string battleId)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(battleId);
+        var session = GetRequiredSession(battleId);
+
+        lock (session.SyncRoot)
+        {
+            return session.HostPlayerId is not null || session.GuestPlayerId is not null;
+        }
+    }
+
+    public void ValidateRealtimeJoin(string battleId, string playerId)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(battleId);
+        ArgumentException.ThrowIfNullOrWhiteSpace(playerId);
+        var session = GetRequiredSession(battleId);
+
+        lock (session.SyncRoot)
+        {
+            if (session.IsMultiplayerMatch()) {
+                _ = session.GetAssignedCreatureIdForPlayer(playerId);
+                return;
+            }
+
+            if (session.HostPlayerId is not null && string.Equals(session.HostPlayerId, playerId, StringComparison.OrdinalIgnoreCase)) {
+                return;
+            }
+
+            _ = session.GetRequiredCreature(playerId);
+        }
+    }
+
+    public BattleActionResult AbandonBattle(string battleId, AbandonBattleRequest request, string? actingPlayerId = null)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(battleId);
         ArgumentNullException.ThrowIfNull(request);
@@ -47,6 +135,8 @@ public sealed class BattleService(IBattleSessionStore battleSessionStore) : IBat
 
         lock (session.SyncRoot)
         {
+            session.EnsureActionsAllowed();
+            EnsurePlayerAuthorization(session, actingPlayerId, request.AbandoningCreatureId);
             var abandoningCreature = session.GetRequiredCreature(request.AbandoningCreatureId);
             session.Concede(request.AbandoningCreatureId);
 
@@ -74,13 +164,16 @@ public sealed class BattleService(IBattleSessionStore battleSessionStore) : IBat
             .ToList();
     }
 
-    public BattleActionResult ExecuteBasicAttack(string battleId, ExecuteBasicAttackRequest request) {
+    public BattleActionResult ExecuteBasicAttack(string battleId, ExecuteBasicAttackRequest request, string? actingPlayerId = null) {
         ArgumentException.ThrowIfNullOrWhiteSpace(battleId);
         ArgumentNullException.ThrowIfNull(request);
 
         var session = GetRequiredSession(battleId);
 
         lock (session.SyncRoot) {
+            session.EnsureActionsAllowed();
+            EnsurePlayerAuthorization(session, actingPlayerId, request.AttackerId);
+            session.EnsureCurrentTurnCreature(request.AttackerId);
             var attacker = session.GetRequiredCreature(request.AttackerId);
             var target = session.GetRequiredCreature(request.TargetId);
 
@@ -94,17 +187,23 @@ public sealed class BattleService(IBattleSessionStore battleSessionStore) : IBat
                 ? MapAbility(ability!)
                 : new AbilityDefinitionDto("basic-attack", "Basic Attack", ContractAbilityTarget.Enemy, ContractAbilityTag.Damage, 0);
             var summary = CreateActionSummary(session, abilityDefinition, attackMove);
-            // Build counter move and its summary so enemy actions are also logged
+
+            if (session.IsMultiplayerMatch()) {
+                var state = ExecuteTurnWithoutAutoCounter(session, attackMove, request.AttackerId);
+                return new BattleActionResult(state, new[] { summary });
+            }
+
+            // Single-player fallback keeps deterministic counter behavior.
             var (counterAttacker, counterTarget) = GetCounterPair(session, attacker);
             var counterMove = CreateCounterMove(session, counterAttacker, counterTarget);
             var counterAbility = new AbilityDefinitionDto("counter-attack", "Counter Attack", ContractAbilityTarget.Enemy, ContractAbilityTag.Damage, 0);
             var counterSummary = CreateActionSummary(session, counterAbility, counterMove);
-            var state = ExecuteTurnWithCounter(session, attackMove, counterMove);
-            return new BattleActionResult(state, new[] { summary, counterSummary });
+            var counterState = ExecuteTurnWithCounter(session, attackMove, counterMove);
+            return new BattleActionResult(counterState, new[] { summary, counterSummary });
         }
     }
 
-    public BattleActionResult ExecuteAbility(string battleId, ExecuteAbilityRequest request)
+    public BattleActionResult ExecuteAbility(string battleId, ExecuteAbilityRequest request, string? actingPlayerId = null)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(battleId);
         ArgumentNullException.ThrowIfNull(request);
@@ -118,17 +217,26 @@ public sealed class BattleService(IBattleSessionStore battleSessionStore) : IBat
 
         lock (session.SyncRoot)
         {
+            session.EnsureActionsAllowed();
+            EnsurePlayerAuthorization(session, actingPlayerId, request.AttackerId);
+            session.EnsureCurrentTurnCreature(request.AttackerId);
             var attacker = session.GetRequiredCreature(request.AttackerId);
             var target = ResolveAndValidateTarget(session, attacker, ability, request.TargetId);
 
             var move = ability.CreateMove(attacker, target);
             var summary = CreateActionSummary(session, MapAbility(ability), move);
+
+            if (session.IsMultiplayerMatch()) {
+                var state = ExecuteTurnWithoutAutoCounter(session, move, request.AttackerId);
+                return new BattleActionResult(state, new[] { summary });
+            }
+
             var (counterAttacker, counterTarget) = GetCounterPair(session, attacker);
             var counterMove = CreateCounterMove(session, counterAttacker, counterTarget);
             var counterAbility = new AbilityDefinitionDto("counter-attack", "Counter Attack", ContractAbilityTarget.Enemy, ContractAbilityTag.Damage, 0);
             var counterSummary = CreateActionSummary(session, counterAbility, counterMove);
-            var state = ExecuteTurnWithCounter(session, move, counterMove);
-            return new BattleActionResult(state, new[] { summary, counterSummary });
+            var counterState = ExecuteTurnWithCounter(session, move, counterMove);
+            return new BattleActionResult(counterState, new[] { summary, counterSummary });
         }
     }
 
@@ -186,10 +294,18 @@ public sealed class BattleService(IBattleSessionStore battleSessionStore) : IBat
         var creature2Id = session.GetCreatureId(session.Battle.Creature2);
         var creature1 = MapCreature(session.Battle.Creature1, creature1Id);
         var creature2 = MapCreature(session.Battle.Creature2, creature2Id);
+        var endReason = BattleEndReason.None;
         var winnerId = session.ForcedWinnerCreatureId
             ?? (session.Battle.TryGetResult(out var result)
                 ? session.GetCreatureId(result!.Winner)
                 : null);
+
+        if (session.ForcedWinnerCreatureId is not null) {
+            endReason = session.ForcedEndReason;
+        }
+        else if (session.Battle.TryGetResult(out var _)) {
+            endReason = BattleEndReason.Eliminated;
+        }
 
         return new BattleStateDto(
             session.BattleId,
@@ -197,8 +313,11 @@ public sealed class BattleService(IBattleSessionStore battleSessionStore) : IBat
             session.StateVersion,
             creature1,
             creature2,
+            session.CurrentTurnCreatureId,
             session.IsConcluded,
-            winnerId);
+            winnerId,
+            session.MatchStatus,
+            endReason);
     }
 
     private static BattleCreatureDto MapCreature(Creature creature, string creatureId) {
@@ -443,5 +562,34 @@ public sealed class BattleService(IBattleSessionStore battleSessionStore) : IBat
         session.AdvanceRound();
 
         return MapState(session);
+    }
+
+    private BattleStateDto ExecuteTurnWithoutAutoCounter(BattleSession session, Move move, string actingCreatureId)
+    {
+        var opponentCreatureId = session.GetOpponentCreatureId(actingCreatureId);
+        var opponent = session.GetRequiredCreature(opponentCreatureId);
+        var actor = session.GetRequiredCreature(actingCreatureId);
+        var waitMove = new DamageMove(0, DamageKind.Physical) {
+            Source = opponent,
+            Destination = actor
+        };
+
+        _ = session.Battle.ExecuteTurn(move, waitMove);
+        session.AdvanceRound();
+
+        return MapState(session);
+    }
+
+    private static void EnsurePlayerAuthorization(BattleSession session, string? actingPlayerId, string actingCreatureId)
+    {
+        if (!session.IsMultiplayerMatch()) {
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(actingPlayerId)) {
+            throw new InvalidOperationException("Missing acting player identity for multiplayer action.");
+        }
+
+        session.EnsurePlayerOwnsCreature(actingPlayerId, actingCreatureId);
     }
 }

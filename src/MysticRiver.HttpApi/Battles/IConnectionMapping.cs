@@ -1,0 +1,20 @@
+using System.Collections.Generic;
+
+namespace MysticRiver.HttpApi.Battles;
+
+public interface IConnectionMapping {
+    void Register(string connectionId, string battleId, string playerId, string? displayName = null);
+    void Unregister(string connectionId);
+    bool TryGetPlayer(string connectionId, out string? playerId);
+    IEnumerable<string> GetConnectionsForBattle(string battleId);
+    IEnumerable<(string ConnectionId, string PlayerId, string? DisplayName)> GetConnectionsForBattleWithPlayers(string battleId);
+    bool TryGetRegistration(string connectionId, out string? battleId, out string? playerId, out string? displayName);
+
+    // Token-based ephemeral authentication for HTTP action calls
+    string CreateToken(string connectionId, string battleId, string playerId, string? displayName = null, bool singleUse = false);
+    bool TryGetByToken(string token, out string? battleId, out string? playerId, out string? displayName);
+    void RemoveToken(string token);
+
+    // Proactively remove expired tokens from internal storage (sweep)
+    void RemoveExpiredTokens();
+}

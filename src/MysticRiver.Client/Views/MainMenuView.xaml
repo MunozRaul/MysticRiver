@@ -16,6 +16,15 @@
             <Setter Property="FontWeight" Value="SemiBold" />
             <Setter Property="FontSize" Value="16" />
         </Style>
+        <Style x:Key="CopyButtonStyle" TargetType="Button">
+            <Setter Property="Padding" Value="10,6" />
+            <Setter Property="Background" Value="#FF2D3546" />
+            <Setter Property="Foreground" Value="#FFF5F7FA" />
+            <Setter Property="BorderBrush" Value="#FF8FA6D9" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="FontSize" Value="12" />
+        </Style>
     </UserControl.Resources>
 
     <Grid>
@@ -36,10 +45,41 @@
                 CornerRadius="12">
             <StackPanel>
                 <TextBlock HorizontalAlignment="Center" FontSize="40" FontWeight="Bold" Foreground="#FFF8FAFC" Text="Mystic River" />
-                <TextBlock Margin="0,8,0,24" HorizontalAlignment="Center" Foreground="#FFD1D5DB" Text="Choose a game mode" />
-                <Button Style="{StaticResource MenuButtonStyle}" Content="Single Player" Click="SinglePlayerButton_Click" />
-                <Button Style="{StaticResource MenuButtonStyle}" Content="Multiplayer (Coming Soon)" IsEnabled="False" />
-                <Button Style="{StaticResource MenuButtonStyle}" Content="Exit" Click="ExitButton_Click" />
+                <StackPanel x:Name="ModeSelectionPanel">
+                    <TextBlock Margin="0,8,0,24" HorizontalAlignment="Center" Foreground="#FFD1D5DB" Text="Choose a game mode" />
+                    <Button Style="{StaticResource MenuButtonStyle}" Content="Single Player" Click="SinglePlayerButton_Click" />
+                    <Button Style="{StaticResource MenuButtonStyle}" Content="Host Multiplayer Match" Click="HostMultiplayerButton_Click" />
+                    <Border Margin="0,0,0,12" Padding="12" Background="#9918202E" BorderBrush="#668FA6D9" BorderThickness="1" CornerRadius="8">
+                        <StackPanel>
+                            <TextBlock Foreground="#FFD1D5DB" Text="Join multiplayer by Battle ID" />
+                            <TextBox x:Name="JoinBattleIdTextBox" Margin="0,8,0,10" Padding="8" Foreground="#FFF5F7FA" Background="#FF2D3546" BorderBrush="#FF8FA6D9" BorderThickness="1" />
+                            <Button Style="{StaticResource MenuButtonStyle}" Margin="0" Content="Join Match" Click="JoinMultiplayerButton_Click" />
+                        </StackPanel>
+                    </Border>
+                    <Button Style="{StaticResource MenuButtonStyle}" Content="Exit" Click="ExitButton_Click" />
+                </StackPanel>
+
+                <Border x:Name="WaitingRoomPanel"
+                        Visibility="Collapsed"
+                        Margin="0,8,0,0"
+                        Padding="12"
+                        Background="#9918202E"
+                        BorderBrush="#668FA6D9"
+                        BorderThickness="1"
+                        CornerRadius="8">
+                    <StackPanel>
+                        <TextBlock FontSize="20" FontWeight="Bold" Foreground="#FFF8FAFC" Text="Waiting Room" />
+                        <StackPanel Margin="0,8,0,0" Orientation="Horizontal">
+                            <TextBlock x:Name="WaitingBattleIdTextBlock" Foreground="#FFD1D5DB" Text="Battle ID: -" />
+                            <Button Style="{StaticResource CopyButtonStyle}" Margin="10,0,0,0" Content="Copy ID" Click="CopyBattleIdButton_Click" />
+                        </StackPanel>
+                        <TextBlock x:Name="WaitingHostTextBlock" Margin="0,4,0,0" Foreground="#FFD1D5DB" Text="Host: -" />
+                        <TextBlock x:Name="WaitingGuestTextBlock" Margin="0,4,0,0" Foreground="#FFD1D5DB" Text="Guest: -" />
+                        <TextBlock x:Name="WaitingStatusTextBlock" Margin="0,4,0,0" Foreground="#FF9EEB8F" Text="Match status: waiting" />
+                        <TextBlock x:Name="WaitingConnectionTextBlock" Margin="0,4,0,10" Foreground="#FF93C5FD" Text="Connection: active" />
+                        <Button Style="{StaticResource MenuButtonStyle}" Margin="0" Content="Cancel Waiting" Click="CancelWaitingButton_Click" />
+                    </StackPanel>
+                </Border>
             </StackPanel>
         </Border>
     </Grid>

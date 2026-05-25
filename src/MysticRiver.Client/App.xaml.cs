@@ -24,6 +24,7 @@ public partial class App : Application {
                     var options = sp.GetRequiredService<ClientOptions>();
                     client.BaseAddress = new Uri(options.ApiBaseUrl);
                 });
+                services.AddSingleton<GuestIdentityService>();
                 services.AddSingleton<BattleRealtimeClient>();
             })
             .Build();

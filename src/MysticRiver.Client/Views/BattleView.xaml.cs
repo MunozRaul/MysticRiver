@@ -14,8 +14,11 @@ using MysticRiver.Contracts.Battle;
 namespace MysticRiver.Client.Views;
 
 public partial class BattleView : UserControl {
-    private const string playerId = "player";
-    private const string enemyId = "enemy";
+    private string playerCreatureId = "player";
+    private const string enemyId = "enemy";    
+    private string playerDisplayName = "Player";
+    private bool isMultiplayer;
+    private string? currentTurnCreatureId;
     private static readonly AbilityOption[] _placeholderAbilities =
     [
         new("Basic Attack", true, new ExecuteAbilityRequest("basic-attack"), 0),
@@ -45,6 +48,8 @@ public partial class BattleView : UserControl {
         _battleApiClient = App.Services.GetRequiredService<BattleApiClient>();
         _battleRealtimeClient = App.Services.GetRequiredService<BattleRealtimeClient>();
         _battleRealtimeClient.BattleStateUpdated += BattleRealtimeClient_BattleStateUpdated;
+        _battleRealtimeClient.BattleLifecycleUpdated += BattleRealtimeClient_BattleLifecycleUpdated;
+        _battleRealtimeClient.PlayerTokenRefreshed += BattleRealtimeClient_PlayerTokenRefreshed;
         _battleRealtimeClient.Reconnected += BattleRealtimeClient_Reconnected;
         // Keep the action log scrolled to newest (bottom) when new entries arrive
         _actionLog.CollectionChanged += ActionLog_CollectionChanged;
@@ -73,7 +78,7 @@ SetAbilities(CreatePlaceholderBattleAbilities());
         }
 
         SetStatus("Abandoning match...");
-        await _battleApiClient.AbandonBattleAsync(battleId, new AbandonBattleRequest(playerId));
+        await _battleApiClient.AbandonBattleAsync(battleId, new AbandonBattleRequest(playerCreatureId));
         await _battleRealtimeClient.DisconnectAsync();
         await CleanupAsync();
     }
@@ -89,8 +94,34 @@ SetAbilities(CreatePlaceholderBattleAbilities());
         ApplyState(response.State);
 
         await LoadAbilitiesAsync();
-        await _battleRealtimeClient.JoinBattleAsync(battleId);
-        SetStatus("Connected. Real-time updates are active. Enemy selected as default target.");
+        // Ensure we have a persisted guest identity and use its display name when joining
+        var identity = App.Services.GetRequiredService<GuestIdentityService>().GetOrCreateIdentity();
+        playerDisplayName = identity.DisplayName;
+                // Use the creature id from the state as the claimed player creature id when joining so server
+        // authorization aligns the token's player id with the creature ids used in action requests.
+        playerCreatureId = response.State.Creature1.CreatureId;
+        var token = await _battleRealtimeClient.JoinBattleAsync(battleId, playerCreatureId, playerDisplayName);
+        _battleApiClient.SetPlayerToken(token);
+        SetStatus($"Connected as {playerDisplayName}. Real-time updates are active. Enemy selected as default target.");
+        isInitialized = true;
+    }
+
+    public async Task InitializeMultiplayerAsync(string battleId, BattleStateDto state, string localCreatureId, string localPlayerId, string localDisplayName) {
+        if (isInitialized) {
+            return;
+        }
+
+        this.battleId = battleId;
+        playerCreatureId = localCreatureId;
+        playerDisplayName = localDisplayName;
+        isMultiplayer = true;
+        selectedTarget = enemyId; // Default to enemy target
+        ApplyState(state);
+
+        await LoadAbilitiesAsync();
+        var token = await _battleRealtimeClient.JoinBattleAsync(battleId, localPlayerId, localDisplayName);
+        _battleApiClient.SetPlayerToken(token);
+        SetStatus($"Connected as {playerDisplayName} (multiplayer). Turn-based battle in progress.");
         isInitialized = true;
     }
 
@@ -154,6 +185,32 @@ SetAbilities(CreatePlaceholderBattleAbilities());
         });
     }
 
+    private void BattleRealtimeClient_BattleLifecycleUpdated(object? _, BattleLifecycleEvent lifecycleEvent) {
+        if (battleId is null || !string.Equals(battleId, lifecycleEvent.BattleId, StringComparison.OrdinalIgnoreCase)) {
+            return;
+        }
+
+        _ = Dispatcher.InvokeAsync(() => {
+            var status = lifecycleEvent.Kind switch {
+                BattleLifecycleEventKind.OpponentJoined => $"{lifecycleEvent.DisplayName ?? "Opponent"} joined the battle.",
+                BattleLifecycleEventKind.BattleStarted => "Both players are connected. Battle started.",
+                BattleLifecycleEventKind.OpponentDisconnected => $"{lifecycleEvent.DisplayName ?? "Opponent"} disconnected.",
+                BattleLifecycleEventKind.BattleEnded => lifecycleEvent.EndReason switch {
+                    BattleEndReason.Forfeit => "Battle ended by forfeit.",
+                    BattleEndReason.Disconnect => "Battle ended by disconnect.",
+                    BattleEndReason.Eliminated => "Battle ended by elimination.",
+                    _ => "Battle ended."
+                },
+                _ => "Battle event received."
+            };
+            SetStatus(status);
+        });
+    }
+
+    private void BattleRealtimeClient_PlayerTokenRefreshed(object? _, string token) {
+        _battleApiClient.SetPlayerToken(token);
+    }
+
     private async void BattleRealtimeClient_Reconnected(object? _, EventArgs __) {
         // On reconnect, re-fetch full battle state from the API to avoid missed events.
         if (battleId is null) { return; }
@@ -187,6 +244,9 @@ SetAbilities(CreatePlaceholderBattleAbilities());
         // Track player mana for button enable/disable
         playerCurrentMana = state.Creature1.CurrentMana;
 
+        // Store current turn info for multiplayer gating
+        currentTurnCreatureId = state.CurrentTurnCreatureId;
+
         // Update player creature stats
         UpdateCreatureDisplay(state.Creature1, PlayerHpTextBlock, PlayerHpBar, PlayerManaTextBlock, PlayerManaBar, PlayerShieldTextBlock, PlayerCCTextBlock, PlayerStatusPanel);
 
@@ -201,7 +261,13 @@ SetAbilities(CreatePlaceholderBattleAbilities());
             var winnerLabel = string.Equals(state.WinnerCreatureId, state.Creature1.CreatureId, StringComparison.OrdinalIgnoreCase)
                 ? state.Creature1.Name
                 : state.Creature2.Name;
-            SetStatus($"Battle ended. Winner: {winnerLabel}.");
+            var reasonText = state.EndReason switch {
+                BattleEndReason.Forfeit => "forfeit",
+                BattleEndReason.Disconnect => "disconnect",
+                BattleEndReason.Eliminated => "elimination",
+                _ => "battle resolution"
+            };
+            SetStatus($"Battle ended ({reasonText}). Winner: {winnerLabel}.");
         }
         else {
             SetStatus("Battle in progress.");
@@ -312,7 +378,7 @@ SetAbilities(CreatePlaceholderBattleAbilities());
         }
 
         var highlights = new[] {
-            new SolidColorBrush(Color.FromArgb(255, 255, 215, 0)), // gold - next turn
+            new SolidColorBrush(Color.FromArgb(255, 255, 215, 0)), // gold - next turn (or current turn in multiplayer)
             new SolidColorBrush(Color.FromArgb(102, 40, 49, 73)),
             new SolidColorBrush(Color.FromArgb(102, 60, 42, 54)),
             new SolidColorBrush(Color.FromArgb(102, 40, 49, 73))
@@ -325,13 +391,18 @@ SetAbilities(CreatePlaceholderBattleAbilities());
             var c = sequence[i];
             var tb = tbs[i];
             var bd = borders[i];
-            if (tb is not null) { tb.Text = $"{i + 1}. {c.Name} ({c.EffectiveInitiative})"; }
-            if (bd is not null) { bd.Background = highlights[i]; }
+            var isCurrentTurn = isMultiplayer && string.Equals(c.CreatureId, currentTurnCreatureId, StringComparison.OrdinalIgnoreCase);
+            var highlightIndex = i == 0 || isCurrentTurn ? 0 : i;
+            if (tb is not null) {
+                var indicator = isCurrentTurn ? " ★" : "";
+                tb.Text = $"{i + 1}. {c.Name} ({c.EffectiveInitiative}){indicator}";
+            }
+            if (bd is not null) { bd.Background = highlights[highlightIndex]; }
         }
     }
 
     private void PlayerCreature_Click(object sender, RoutedEventArgs e) {
-        SelectTarget(playerId);
+        SelectTarget(playerCreatureId);
     }
 
     private void EnemyCreature_Click(object sender, RoutedEventArgs e) {
@@ -340,7 +411,7 @@ SetAbilities(CreatePlaceholderBattleAbilities());
 
     private void SelectTarget(string targetId) {
         selectedTarget = targetId;
-        var targetName = selectedTarget == playerId ? "You" : "Enemy";
+        var targetName = selectedTarget == playerCreatureId ? "You" : "Enemy";
         SetStatus($"Target selected: {targetName}. Click an ability to attack.");
         UpdateTargetHighlight();
     }
@@ -354,7 +425,7 @@ SetAbilities(CreatePlaceholderBattleAbilities());
         var enemyPinkBrush = new SolidColorBrush(Color.FromArgb(255, 255, 188, 200)); // Original pink
         
         if (playerPanel is not null) {
-            playerPanel.BorderBrush = selectedTarget == playerId ? goldBrush : playerBlueBrush;
+            playerPanel.BorderBrush = selectedTarget == playerCreatureId ? goldBrush : playerBlueBrush;
         }
         
         if (enemyPanel is not null) {
@@ -389,10 +460,10 @@ SetAbilities(CreatePlaceholderBattleAbilities());
         }
     }
 
-    private static AbilityOption CreateAbilityOption(AbilityDefinitionDto ability) {
+    private AbilityOption CreateAbilityOption(AbilityDefinitionDto ability) {
         // Self-targeted abilities always target player; others will use selectedTarget
-        var targetId = ability.Target == AbilityTarget.Self ? playerId : null;
-        var request = new ExecuteAbilityRequest(ability.Id, TargetId: targetId);
+        var targetId = ability.Target == AbilityTarget.Self ? playerCreatureId : null;
+        var request = new ExecuteAbilityRequest(ability.Id, playerCreatureId, TargetId: targetId);
         return new AbilityOption(ability.Name, true, request, ability.ManaCost);
     }
 
@@ -404,11 +475,13 @@ SetAbilities(CreatePlaceholderBattleAbilities());
     }
 
     private void UpdateAbilityButtonStates() {
+        var isPlayerTurn = !isMultiplayer || string.Equals(currentTurnCreatureId, playerCreatureId, StringComparison.OrdinalIgnoreCase);
         var updatedAbilities = new List<AbilityOption>();
         foreach (var ability in _abilities) {
             var hasEnoughMana = playerCurrentMana >= ability.ManaCost;
+            var canUse = hasEnoughMana && isPlayerTurn;
             // Create a new AbilityOption with updated IsEnabled
-            var updatedAbility = ability with { IsEnabled = hasEnoughMana };
+            var updatedAbility = ability with { IsEnabled = canUse };
             updatedAbilities.Add(updatedAbility);
         }
 
@@ -416,6 +489,10 @@ SetAbilities(CreatePlaceholderBattleAbilities());
         _abilities.Clear();
         foreach (var ability in updatedAbilities) {
             _abilities.Add(ability);
+        }
+
+        if (isMultiplayer && !isPlayerTurn) {
+            SetStatus("Waiting for opponent's turn...");
         }
     }
 

@@ -6,5 +6,8 @@ public sealed record BattleStateDto(
     int StateVersion,
     BattleCreatureDto Creature1,
     BattleCreatureDto Creature2,
+    string? CurrentTurnCreatureId,
     bool BattleEnded,
-    string? WinnerCreatureId);
+    string? WinnerCreatureId,
+    MatchStatus MatchStatus = MatchStatus.InProgress,
+    BattleEndReason EndReason = BattleEndReason.None);
