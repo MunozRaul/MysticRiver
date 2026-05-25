@@ -16,6 +16,15 @@
             <Setter Property="FontWeight" Value="SemiBold" />
             <Setter Property="FontSize" Value="16" />
         </Style>
+        <Style x:Key="CopyButtonStyle" TargetType="Button">
+            <Setter Property="Padding" Value="10,6" />
+            <Setter Property="Background" Value="#FF2D3546" />
+            <Setter Property="Foreground" Value="#FFF5F7FA" />
+            <Setter Property="BorderBrush" Value="#FF8FA6D9" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="FontSize" Value="12" />
+        </Style>
     </UserControl.Resources>
 
     <Grid>
@@ -60,7 +69,10 @@
                         CornerRadius="8">
                     <StackPanel>
                         <TextBlock FontSize="20" FontWeight="Bold" Foreground="#FFF8FAFC" Text="Waiting Room" />
-                        <TextBlock x:Name="WaitingBattleIdTextBlock" Margin="0,8,0,0" Foreground="#FFD1D5DB" Text="Battle ID: -" />
+                        <StackPanel Margin="0,8,0,0" Orientation="Horizontal">
+                            <TextBlock x:Name="WaitingBattleIdTextBlock" Foreground="#FFD1D5DB" Text="Battle ID: -" />
+                            <Button Style="{StaticResource CopyButtonStyle}" Margin="10,0,0,0" Content="Copy ID" Click="CopyBattleIdButton_Click" />
+                        </StackPanel>
                         <TextBlock x:Name="WaitingHostTextBlock" Margin="0,4,0,0" Foreground="#FFD1D5DB" Text="Host: -" />
                         <TextBlock x:Name="WaitingGuestTextBlock" Margin="0,4,0,0" Foreground="#FFD1D5DB" Text="Guest: -" />
                         <TextBlock x:Name="WaitingStatusTextBlock" Margin="0,4,0,0" Foreground="#FF9EEB8F" Text="Match status: waiting" />

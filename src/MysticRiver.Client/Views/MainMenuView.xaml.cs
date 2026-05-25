@@ -14,6 +14,7 @@ public partial class MainMenuView : UserControl {
     public event EventHandler<MultiplayerJoinRequestedEventArgs>? MultiplayerJoinRequested;
     public event EventHandler? WaitingCancelled;
     public event EventHandler? ExitRequested;
+    private string? currentBattleId;
 
     public MainMenuView() {
         InitializeComponent();
@@ -45,12 +46,24 @@ public partial class MainMenuView : UserControl {
         ExitRequested?.Invoke(this, EventArgs.Empty);
     }
 
+    private void CopyBattleIdButton_Click(object sender, RoutedEventArgs e) {
+        if (string.IsNullOrWhiteSpace(currentBattleId)) {
+            MessageBox.Show("No battle ID is available to copy yet.", "Copy Battle ID", MessageBoxButton.OK, MessageBoxImage.Information);
+            return;
+        }
+
+        Clipboard.SetText(currentBattleId);
+        MessageBox.Show("Battle ID copied to clipboard.", "Copy Battle ID", MessageBoxButton.OK, MessageBoxImage.Information);
+    }
+
     public void ShowModeSelection() {
+        currentBattleId = null;
         ModeSelectionPanel.Visibility = Visibility.Visible;
         WaitingRoomPanel.Visibility = Visibility.Collapsed;
     }
 
     public void ShowWaitingRoom(string battleId, string hostName, string guestName, string matchStatus, string connectionStatus) {
+        currentBattleId = battleId;
         WaitingBattleIdTextBlock.Text = $"Battle ID: {battleId}";
         WaitingHostTextBlock.Text = $"Host: {hostName}";
         WaitingGuestTextBlock.Text = $"Guest: {guestName}";
