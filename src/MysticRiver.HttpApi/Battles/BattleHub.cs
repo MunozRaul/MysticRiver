@@ -9,12 +9,14 @@ public sealed class BattleHub : Hub<IBattleClient> {
         _connectionMapping = connectionMapping;
     }
 
-    public Task JoinBattle(string battleId, string playerId) {
+    // Returns an ephemeral token the client should use for subsequent HTTP calls
+    public Task<string> JoinBattle(string battleId, string playerId) {
         ArgumentException.ThrowIfNullOrWhiteSpace(battleId);
         ArgumentException.ThrowIfNullOrWhiteSpace(playerId);
 
         _connectionMapping.Register(Context.ConnectionId, battleId, playerId);
-        return Groups.AddToGroupAsync(Context.ConnectionId, battleId);
+        var token = _connectionMapping.CreateToken(Context.ConnectionId, battleId, playerId);
+        return Task.FromResult(token);
     }
 
     public override Task OnDisconnectedAsync(Exception? exception) {

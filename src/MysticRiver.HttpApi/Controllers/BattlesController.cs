@@ -1,4 +1,5 @@
 using System;
+using System.Linq;
 
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.SignalR;
@@ -14,9 +15,11 @@ namespace MysticRiver.HttpApi.Controllers;
 public sealed class BattlesController(
     IBattleService battleService,
     IHubContext<BattleHub, IBattleClient> battleHubContext,
+    IConnectionMapping connectionMapping,
     ILogger<BattlesController> logger) : ControllerBase {
     private readonly IBattleService _battleService = battleService;
     private readonly IHubContext<BattleHub, IBattleClient> _battleHubContext = battleHubContext;
+    private readonly IConnectionMapping _connectionMapping = connectionMapping;
     private readonly ILogger<BattlesController> _logger = logger;
 
     [HttpPost("start")]
@@ -50,6 +53,21 @@ public sealed class BattlesController(
 
     [HttpPost("{battleId}/abandon")]
     public async Task<ActionResult<BattleStateDto>> AbandonBattle(string battleId, [FromBody] AbandonBattleRequest request) {
+        // Validate token from header maps to this battle and player
+        if (!Request.Headers.TryGetValue("X-Player-Token", out var tokenValues)) {
+            _logger.LogWarning("Missing player token for abandon on battle {BattleId}", battleId);
+            return StatusCode(403, CreateProblem("Unauthorized", "Missing player token."));
+        }
+        var token = tokenValues.FirstOrDefault();
+        if (string.IsNullOrWhiteSpace(token) || !_connectionMapping.TryGetByToken(token, out var tokBattle, out var tokPlayer) || tokBattle != battleId) {
+            _logger.LogWarning("Invalid or expired token for abandon on battle {BattleId}", battleId);
+            return StatusCode(403, CreateProblem("Unauthorized", "Invalid or expired player token."));
+        }
+        if (tokPlayer != request.AbandoningCreatureId) {
+            _logger.LogWarning("Token player mismatch for abandon on battle {BattleId}: tokenPlayer={TokenPlayer} requestPlayer={RequestPlayer}", battleId, tokPlayer, request.AbandoningCreatureId);
+            return StatusCode(403, CreateProblem("Unauthorized", "Token does not own the abandoning creature."));
+        }
+
         return await ExecuteBattleActionAsync(
             battleId,
             () => _battleService.AbandonBattle(battleId, request),
@@ -71,6 +89,21 @@ public sealed class BattlesController(
     /// </summary>
     [HttpPost("{battleId}/actions/basic-attack")]
     public async Task<ActionResult<BattleStateDto>> ExecuteBasicAttack(string battleId, [FromBody] ExecuteBasicAttackRequest request) {
+        // Validate token header maps to this battle and attacker
+        if (!Request.Headers.TryGetValue("X-Player-Token", out var tokenValues)) {
+            _logger.LogWarning("Missing player token for basic-attack on battle {BattleId}", battleId);
+            return StatusCode(403, CreateProblem("Unauthorized", "Missing player token."));
+        }
+        var token = tokenValues.FirstOrDefault();
+        if (string.IsNullOrWhiteSpace(token) || !_connectionMapping.TryGetByToken(token, out var tokBattle, out var tokPlayer) || tokBattle != battleId) {
+            _logger.LogWarning("Invalid or expired token for basic-attack on battle {BattleId}", battleId);
+            return StatusCode(403, CreateProblem("Unauthorized", "Invalid or expired player token."));
+        }
+        if (tokPlayer != request.AttackerId) {
+            _logger.LogWarning("Token player mismatch for basic-attack on battle {BattleId}: tokenPlayer={TokenPlayer} requestPlayer={RequestPlayer}", battleId, tokPlayer, request.AttackerId);
+            return StatusCode(403, CreateProblem("Unauthorized", "Token does not own the attacker creature."));
+        }
+
         return await ExecuteBattleActionAsync(
             battleId,
             () => _battleService.ExecuteBasicAttack(battleId, request),
@@ -85,51 +118,66 @@ public sealed class BattlesController(
     /// </summary>
     [HttpPost("{battleId}/actions/ability")]
     public async Task<ActionResult<BattleStateDto>> ExecuteAbility(string battleId, [FromBody] ExecuteAbilityRequest request)
-{
-    return await ExecuteBattleActionAsync(
-        battleId,
-        () => _battleService.ExecuteAbility(battleId, request),
-        "Invalid ability request.",
-        $"ability {request.AbilityId}");
-}
+    {
+        // Validate token header maps to this battle and attacker
+        if (!Request.Headers.TryGetValue("X-Player-Token", out var tokenValues)) {
+            _logger.LogWarning("Missing player token for ability on battle {BattleId}", battleId);
+            return StatusCode(403, CreateProblem("Unauthorized", "Missing player token."));
+        }
+        var token = tokenValues.FirstOrDefault();
+        if (string.IsNullOrWhiteSpace(token) || !_connectionMapping.TryGetByToken(token, out var tokBattle, out var tokPlayer) || tokBattle != battleId) {
+            _logger.LogWarning("Invalid or expired token for ability on battle {BattleId}", battleId);
+            return StatusCode(403, CreateProblem("Unauthorized", "Invalid or expired player token."));
+        }
+        if (tokPlayer != request.AttackerId) {
+            _logger.LogWarning("Token player mismatch for ability on battle {BattleId}: tokenPlayer={TokenPlayer} requestPlayer={RequestPlayer}", battleId, tokPlayer, request.AttackerId);
+            return StatusCode(403, CreateProblem("Unauthorized", "Token does not own the attacker creature."));
+        }
 
-private static ProblemDetails CreateProblem(string title, string detail) {
-    return new ProblemDetails {
-        Title = title,
-        Detail = detail
-    };
-}
+        return await ExecuteBattleActionAsync(
+            battleId,
+            () => _battleService.ExecuteAbility(battleId, request),
+            "Invalid ability request.",
+            $"ability {request.AbilityId}");
+    }
 
-private async Task<ActionResult<BattleStateDto>> ExecuteBattleActionAsync(
-    string battleId,
-    Func<BattleActionResult> action,
-    string invalidRequestTitle,
-    string actionType)
-{
-    try
-    {
-        var result = action();
-        _logger.LogInformation("Battle {BattleId}: {ActionType} executed at round {Round}", battleId, actionType, result.State.RoundNumber);
-        var battleEvent = new BattleStateUpdatedEvent(battleId, result.State, result.ActionSummaries);
+    private static ProblemDetails CreateProblem(string title, string detail) {
+        return new ProblemDetails {
+            Title = title,
+            Detail = detail
+        };
+    }
 
-        await _battleHubContext.Clients.Group(battleId).BattleStateUpdated(battleEvent);
-        return Ok(result.State);
-    }
-    catch (KeyNotFoundException exception)
+    private async Task<ActionResult<BattleStateDto>> ExecuteBattleActionAsync(
+        string battleId,
+        Func<BattleActionResult> action,
+        string invalidRequestTitle,
+        string actionType)
     {
-        _logger.LogWarning("Battle {BattleId}: {ActionType} failed - not found: {Reason}", battleId, actionType, exception.Message);
-        return NotFound(CreateProblem("Battle or creature not found.", exception.Message));
+        try
+        {
+            var result = action();
+            _logger.LogInformation("Battle {BattleId}: {ActionType} executed at round {Round}", battleId, actionType, result.State.RoundNumber);
+            var battleEvent = new BattleStateUpdatedEvent(battleId, result.State, result.ActionSummaries);
+
+            await _battleHubContext.Clients.Group(battleId).BattleStateUpdated(battleEvent);
+            return Ok(result.State);
+        }
+        catch (KeyNotFoundException exception)
+        {
+            _logger.LogWarning("Battle {BattleId}: {ActionType} failed - not found: {Reason}", battleId, actionType, exception.Message);
+            return NotFound(CreateProblem("Battle or creature not found.", exception.Message));
+        }
+        catch (InvalidOperationException exception)
+        {
+            _logger.LogWarning("Battle {BattleId}: {ActionType} cannot be executed - {Reason}", battleId, actionType, exception.Message);
+            return BadRequest(CreateProblem("Battle action cannot be executed.", exception.Message));
+        }
+        catch (ArgumentException exception)
+        {
+            _logger.LogWarning("Battle {BattleId}: {ActionType} invalid request - {Reason}", battleId, actionType, exception.Message);
+            return BadRequest(CreateProblem(invalidRequestTitle, exception.Message));
+        }
     }
-    catch (InvalidOperationException exception)
-    {
-        _logger.LogWarning("Battle {BattleId}: {ActionType} cannot be executed - {Reason}", battleId, actionType, exception.Message);
-        return BadRequest(CreateProblem("Battle action cannot be executed.", exception.Message));
-    }
-    catch (ArgumentException exception)
-    {
-        _logger.LogWarning("Battle {BattleId}: {ActionType} invalid request - {Reason}", battleId, actionType, exception.Message);
-        return BadRequest(CreateProblem(invalidRequestTitle, exception.Message));
-    }
-}
 
 }
