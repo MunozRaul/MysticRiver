@@ -3,7 +3,7 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-             mc:Ignorable="d">
+             mc:Ignorable="d" UseLayoutRounding="True" SnapsToDevicePixels="True">
     <UserControl.Resources>
         <Style x:Key="ActionButtonStyle" TargetType="Button">
             <Setter Property="Margin" Value="0,0,12,10" />
@@ -19,7 +19,7 @@
 
     <Grid>
         <Grid.Background>
-            <ImageBrush ImageSource="pack://siteoforigin:,,,/Assets/Placeholders/battle-background.png" Stretch="UniformToFill" />
+            <ImageBrush ImageSource="pack://siteoforigin:,,,/Assets/battle-background-winter_cropped.png" Stretch="UniformToFill" RenderOptions.BitmapScalingMode="NearestNeighbor" />
         </Grid.Background>
 
         <Rectangle Fill="#7F10131A" />
@@ -42,19 +42,46 @@
                     <TextBlock FontSize="20" FontWeight="Bold" Foreground="#FFE5E7EB" Text="Turn Order" />
                     <TextBlock x:Name="TurnOrderDescriptionTextBlock" Margin="0,2,0,0" Foreground="#FFBFC7D5" Text="Initializing live connection..." />
                     <StackPanel Margin="0,10,0,0">
-                        <Border Margin="0,0,0,6" Padding="8,6" Background="#66283149" CornerRadius="6">
+                        <Border x:Name="TurnOrderLine1Border" Margin="0,0,0,6" Padding="8,6" Background="#66283149" CornerRadius="6">
                             <TextBlock x:Name="TurnOrderLine1TextBlock" Foreground="#FFF3F4F6" Text="1. Knight of the River (You)" />
                         </Border>
-                        <Border Margin="0,0,0,6" Padding="8,6" Background="#663C2A36" CornerRadius="6">
+                        <Border x:Name="TurnOrderLine2Border" Margin="0,0,0,6" Padding="8,6" Background="#663C2A36" CornerRadius="6">
                             <TextBlock x:Name="TurnOrderLine2TextBlock" Foreground="#FFF3F4F6" Text="2. Wraith Duelist (Enemy)" />
                         </Border>
-                        <Border Margin="0,0,0,6" Padding="8,6" Background="#66283149" CornerRadius="6">
+                        <Border x:Name="TurnOrderLine3Border" Margin="0,0,0,6" Padding="8,6" Background="#66283149" CornerRadius="6">
                             <TextBlock x:Name="TurnOrderLine3TextBlock" Foreground="#FFF3F4F6" Text="3. Knight of the River (You)" />
                         </Border>
-                        <Border Padding="8,6" Background="#663C2A36" CornerRadius="6">
+                        <Border x:Name="TurnOrderLine4Border" Padding="8,6" Background="#663C2A36" CornerRadius="6">
                             <TextBlock x:Name="TurnOrderLine4TextBlock" Foreground="#FFF3F4F6" Text="4. Wraith Duelist (Enemy)" />
                         </Border>
                     </StackPanel>
+                    <!-- Action log -->
+                    <TextBlock Margin="0,8,0,0" FontSize="13" FontWeight="Bold" Foreground="#FFE5E7EB" Text="Action Log" />
+                    <Border Margin="0,6,0,0" Background="#1120262E" CornerRadius="6" Padding="6" Height="200">
+                        <ScrollViewer x:Name="ActionLogScrollViewer" VerticalScrollBarVisibility="Auto">
+                            <ItemsControl x:Name="ActionLogItemsControl" ItemsSource="{Binding ActionLog}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <TextBlock TextWrapping="Wrap" FontSize="12" Text="{Binding Text}">
+                                            <TextBlock.Style>
+                                                <Style TargetType="TextBlock">
+                                                    <Setter Property="Foreground" Value="#FFD1D5DB" />
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding IsPlayer}" Value="True">
+                                                            <Setter Property="Foreground" Value="#FF9EEB8F" />
+                                                        </DataTrigger>
+                                                        <DataTrigger Binding="{Binding IsPlayer}" Value="False">
+                                                            <Setter Property="Foreground" Value="#FFF9A8B9" />
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </TextBlock.Style>
+                                        </TextBlock>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </ScrollViewer>
+                    </Border>
                 </StackPanel>
             </Border>
 
@@ -65,23 +92,55 @@
                     <ColumnDefinition Width="*" />
                 </Grid.ColumnDefinitions>
 
-                <Border Grid.Column="0"
-                        Width="260"
+                <Border x:Name="PlayerCreaturePanel"
+                        Grid.Column="0"
+                        Width="280"
                         Padding="10"
                         HorizontalAlignment="Left"
                         VerticalAlignment="Bottom"
                         Background="#D8272F3D"
                         BorderBrush="#FFB0C7FF"
                         BorderThickness="1"
-                        CornerRadius="10">
+                        CornerRadius="10"
+                        MouseDown="PlayerCreature_Click"
+                        Cursor="Hand">
                     <StackPanel>
-                        <Image Width="220"
-                               Height="220"
+                        <Image Width="240"
+                               Height="240"
                                HorizontalAlignment="Center"
-                               Source="pack://siteoforigin:,,,/Assets/Placeholders/hero-placeholder.png"
-                               Stretch="UniformToFill" />
+                               VerticalAlignment="Center"
+                               Source="pack://siteoforigin:,,,/Assets/male_hero_cropped.png"
+                               Stretch="Uniform"
+                               SnapsToDevicePixels="True"
+                               RenderOptions.BitmapScalingMode="NearestNeighbor" />
                         <TextBlock x:Name="PlayerNameTextBlock" Margin="0,8,0,0" FontSize="16" FontWeight="Bold" Foreground="#FFF8FAFC" Text="Knight of the River" />
-                        <TextBlock x:Name="PlayerStatsTextBlock" Foreground="#FFE2E8F0" Text="HP 120/120 | Initiative 15" />
+                        
+                        <!-- HP Bar -->
+                        <StackPanel Margin="0,6,0,0">
+                            <TextBlock FontSize="11" Foreground="#FFB0C7FF" Text="Health" />
+                            <Border Height="16" Background="#33000000" CornerRadius="3" Margin="0,2,0,0">
+                                <Border x:Name="PlayerHpBar" Width="100" Height="16" Background="#FF10B981" HorizontalAlignment="Left" CornerRadius="3" />
+                            </Border>
+                            <TextBlock x:Name="PlayerHpTextBlock" FontSize="10" Foreground="#FFE2E8F0" Text="HP 120/120" />
+                        </StackPanel>
+
+                        <!-- Mana Bar -->
+                        <StackPanel Margin="0,4,0,0">
+                            <TextBlock FontSize="11" Foreground="#FF6366F1" Text="Mana" />
+                            <Border Height="12" Background="#33000000" CornerRadius="3" Margin="0,2,0,0">
+                                <Border x:Name="PlayerManaBar" Width="80" Height="12" Background="#FF6366F1" HorizontalAlignment="Left" CornerRadius="3" />
+                            </Border>
+                            <TextBlock x:Name="PlayerManaTextBlock" FontSize="10" Foreground="#FF93C5FD" Text="Mana 80/100" />
+                        </StackPanel>
+
+                        <!-- Shield & Status -->
+                        <StackPanel Margin="0,4,0,0" Orientation="Horizontal" TextBlock.FontSize="10">
+                            <TextBlock x:Name="PlayerShieldTextBlock" Foreground="#FFA78BFA" Margin="0,0,12,0" Text="Shield 0" />
+                            <TextBlock x:Name="PlayerCCTextBlock" Foreground="#FFFBBF24" Text="CC: None" />
+                        </StackPanel>
+
+                        <!-- Status Effects -->
+                        <StackPanel x:Name="PlayerStatusPanel" Margin="0,4,0,0" Orientation="Horizontal" />
                     </StackPanel>
                 </Border>
 
@@ -99,23 +158,55 @@
                     </StackPanel>
                 </Border>
 
-                <Border Grid.Column="2"
-                        Width="260"
+                <Border x:Name="EnemyCreaturePanel"
+                        Grid.Column="2"
+                        Width="280"
                         Padding="10"
                         HorizontalAlignment="Right"
                         VerticalAlignment="Top"
                         Background="#D83A2432"
                         BorderBrush="#FFFFBCC8"
                         BorderThickness="1"
-                        CornerRadius="10">
+                        CornerRadius="10"
+                        MouseDown="EnemyCreature_Click"
+                        Cursor="Hand">
                     <StackPanel>
-                        <Image Width="220"
-                               Height="220"
+                        <Image Width="240"
+                               Height="240"
                                HorizontalAlignment="Center"
-                               Source="pack://siteoforigin:,,,/Assets/Placeholders/enemy-placeholder.png"
-                               Stretch="UniformToFill" />
-                        <TextBlock x:Name="EnemyNameTextBlock" Margin="0,8,0,0" HorizontalAlignment="Right" FontSize="16" FontWeight="Bold" Foreground="#FFF8FAFC" Text="Wraith Duelist" />
-                        <TextBlock x:Name="EnemyStatsTextBlock" HorizontalAlignment="Right" Foreground="#FFE2E8F0" Text="HP 110/110 | Initiative 10" />
+                               VerticalAlignment="Center"
+                               Source="pack://siteoforigin:,,,/Assets/enemy_dragon_cropped.png"
+                               Stretch="Uniform"
+                               SnapsToDevicePixels="True"
+                               RenderOptions.BitmapScalingMode="NearestNeighbor" />
+                        <TextBlock x:Name="EnemyNameTextBlock" Margin="0,8,0,0" HorizontalAlignment="Center" FontSize="16" FontWeight="Bold" Foreground="#FFF8FAFC" Text="Wraith Duelist" />
+                        
+                        <!-- HP Bar -->
+                        <StackPanel Margin="0,6,0,0">
+                            <TextBlock FontSize="11" Foreground="#FFFFBCC8" Text="Health" />
+                            <Border Height="16" Background="#33000000" CornerRadius="3" Margin="0,2,0,0">
+                                <Border x:Name="EnemyHpBar" Width="100" Height="16" Background="#FFEF4444" HorizontalAlignment="Left" CornerRadius="3" />
+                            </Border>
+                            <TextBlock x:Name="EnemyHpTextBlock" FontSize="10" Foreground="#FFE2E8F0" Text="HP 110/110" />
+                        </StackPanel>
+
+                        <!-- Mana Bar -->
+                        <StackPanel Margin="0,4,0,0">
+                            <TextBlock FontSize="11" Foreground="#FF6366F1" Text="Mana" />
+                            <Border Height="12" Background="#33000000" CornerRadius="3" Margin="0,2,0,0">
+                                <Border x:Name="EnemyManaBar" Width="80" Height="12" Background="#FF6366F1" HorizontalAlignment="Left" CornerRadius="3" />
+                            </Border>
+                            <TextBlock x:Name="EnemyManaTextBlock" FontSize="10" Foreground="#FF93C5FD" Text="Mana 60/100" />
+                        </StackPanel>
+
+                        <!-- Shield & Status -->
+                        <StackPanel Margin="0,4,0,0" Orientation="Horizontal" TextBlock.FontSize="10">
+                            <TextBlock x:Name="EnemyShieldTextBlock" Foreground="#FFA78BFA" Margin="0,0,12,0" Text="Shield 0" />
+                            <TextBlock x:Name="EnemyCCTextBlock" Foreground="#FFFBBF24" Text="CC: None" />
+                        </StackPanel>
+
+                        <!-- Status Effects -->
+                        <StackPanel x:Name="EnemyStatusPanel" Margin="0,4,0,0" Orientation="Horizontal" />
                     </StackPanel>
                 </Border>
             </Grid>

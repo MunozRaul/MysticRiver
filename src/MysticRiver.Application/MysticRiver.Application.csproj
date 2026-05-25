@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk.Web">
+<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
@@ -7,12 +7,6 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Microsoft.AspNetCore.OpenApi" />
-    <PackageReference Include="Scalar.AspNetCore" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <ProjectReference Include="..\MysticRiver.Application\MysticRiver.Application.csproj" />
     <ProjectReference Include="..\MysticRiver.Contracts\MysticRiver.Contracts.csproj" />
     <ProjectReference Include="..\MysticRiver.Domain\MysticRiver.Domain.csproj" />
   </ItemGroup>

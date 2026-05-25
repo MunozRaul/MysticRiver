@@ -1,0 +1,55 @@
+<UserControl x:Class="MysticRiver.Client.Views.PauseView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             mc:Ignorable="d"
+             Focusable="True"
+             PreviewKeyDown="PauseView_PreviewKeyDown"
+             Loaded="PauseView_Loaded">
+    <Grid Background="#7F0B1220">
+        <Grid.Resources>
+            <Style x:Key="PauseButtonStyle" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
+                <Setter Property="Margin" Value="0,0,0,10" />
+                <Setter Property="Padding" Value="18,12" />
+                <Setter Property="MinWidth" Value="280" />
+                <Setter Property="Background" Value="#FF2D3546" />
+                <Setter Property="Foreground" Value="#FFF5F7FA" />
+                <Setter Property="BorderBrush" Value="#FF8FA6D9" />
+                <Setter Property="BorderThickness" Value="1" />
+                <Setter Property="FontWeight" Value="SemiBold" />
+                <Setter Property="FontSize" Value="16" />
+            </Style>
+        </Grid.Resources>
+
+        <Border Width="460"
+                Padding="30"
+                HorizontalAlignment="Center"
+                VerticalAlignment="Center"
+                Background="#D60F172A"
+                BorderBrush="#AA9AAED6"
+                BorderThickness="1"
+                CornerRadius="12">
+            <StackPanel>
+                <TextBlock HorizontalAlignment="Center"
+                           FontSize="32"
+                           FontWeight="Bold"
+                           Foreground="#FFF8FAFC"
+                           Text="Battle Paused" />
+                <TextBlock Margin="0,8,0,24"
+                           HorizontalAlignment="Center"
+                           Foreground="#FFD1D5DB"
+                           Text="Choose what you want to do next." />
+                <Button x:Name="AbandonButton"
+                        Style="{StaticResource PauseButtonStyle}"
+                        Content="Abandon Match" />
+                <Button x:Name="ExitButton"
+                        Style="{StaticResource PauseButtonStyle}"
+                        Content="Exit Game" />
+                <Button x:Name="CancelButton"
+                        Style="{StaticResource PauseButtonStyle}"
+                        Content="Resume" />
+            </StackPanel>
+        </Border>
+    </Grid>
+</UserControl>

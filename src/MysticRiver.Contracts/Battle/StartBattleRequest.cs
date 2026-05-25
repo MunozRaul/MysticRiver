@@ -6,5 +6,5 @@ public sealed record StartBattleRequest(
     int PlayerMaxHp = 120,
     int EnemyMaxHp = 110,
     int PlayerInitiative = 15,
-    int EnemyInitiative = 10,
+    int EnemyInitiative = 20,
     int EnemyAttackPower = 12);

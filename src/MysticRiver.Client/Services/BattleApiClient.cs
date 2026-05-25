@@ -17,20 +17,54 @@ public sealed class BattleApiClient(HttpClient httpClient) {
         return result ?? throw new InvalidOperationException("Battle start response was empty.");
     }
 
-    public async Task<BattleStateDto> ExecuteBasicAttackAsync(
+    public async Task<IReadOnlyList<AbilityDefinitionDto>> GetAbilitiesAsync(CancellationToken cancellationToken = default)
+    {
+        using var response = await _httpClient.GetAsync("api/battles/abilities", cancellationToken);
+        response.EnsureSuccessStatusCode();
+
+        var result = await response.Content.ReadFromJsonAsync<IReadOnlyList<AbilityDefinitionDto>>(cancellationToken: cancellationToken);
+        return result ?? throw new InvalidOperationException("Ability catalog response was empty.");
+    }
+
+    public async Task<BattleStateDto> ExecuteAbilityAsync(
         string battleId,
-        ExecuteBasicAttackRequest request,
+        ExecuteAbilityRequest request,
         CancellationToken cancellationToken = default) {
         ArgumentException.ThrowIfNullOrWhiteSpace(battleId);
         ArgumentNullException.ThrowIfNull(request);
 
         using var response = await _httpClient.PostAsJsonAsync(
-            $"api/battles/{battleId}/actions/basic-attack",
+            $"api/battles/{battleId}/actions/ability",
             request,
             cancellationToken);
         response.EnsureSuccessStatusCode();
 
         var result = await response.Content.ReadFromJsonAsync<BattleStateDto>(cancellationToken: cancellationToken);
         return result ?? throw new InvalidOperationException("Battle state response was empty.");
+    }
+
+    public async Task<BattleStateDto> GetBattleStateAsync(string battleId, CancellationToken cancellationToken = default) {
+        ArgumentException.ThrowIfNullOrWhiteSpace(battleId);
+        using var response = await _httpClient.GetAsync($"api/battles/{battleId}", cancellationToken);
+        response.EnsureSuccessStatusCode();
+        var result = await response.Content.ReadFromJsonAsync<BattleStateDto>(cancellationToken: cancellationToken);
+        return result ?? throw new InvalidOperationException("GetBattleState response was empty.");
+    }
+
+    public async Task<BattleStateDto> AbandonBattleAsync(
+        string battleId,
+        AbandonBattleRequest request,
+        CancellationToken cancellationToken = default) {
+        ArgumentException.ThrowIfNullOrWhiteSpace(battleId);
+        ArgumentNullException.ThrowIfNull(request);
+
+        using var response = await _httpClient.PostAsJsonAsync(
+            $"api/battles/{battleId}/abandon",
+            request,
+            cancellationToken);
+        response.EnsureSuccessStatusCode();
+
+        var result = await response.Content.ReadFromJsonAsync<BattleStateDto>(cancellationToken: cancellationToken);
+        return result ?? throw new InvalidOperationException("Abandon battle response was empty.");
     }
 }

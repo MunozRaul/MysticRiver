@@ -29,7 +29,7 @@ public class StatusEffectTests
 
         creature.ApplyStatus(StatusEffect.Poison);
 
-        Assert.Equal(StatusEffect.Poison, creature.Status);
+        Assert.True(creature.Status.HasFlag(StatusEffect.Poison));
     }
 
     [Fact]
@@ -41,14 +41,44 @@ public class StatusEffectTests
     }
 
     [Fact]
-    public void ApplyStatus_OverwritesPreviousStatus()
+    public void ApplyStatus_AllowsMultipleStatuses()
     {
         var creature = new Creature("Gruk", 100, 10);
         creature.ApplyStatus(StatusEffect.Poison);
 
         creature.ApplyStatus(StatusEffect.Burn);
 
-        Assert.Equal(StatusEffect.Burn, creature.Status);
+        Assert.True(creature.Status.HasFlag(StatusEffect.Poison));
+        Assert.True(creature.Status.HasFlag(StatusEffect.Burn));
+    }
+
+    [Fact]
+    public void ApplyStatus_ReapplyingStackableStatus_IncrementsStacksAndRefreshesDuration()
+    {
+        var creature = new Creature("Gruk", 100, 10);
+
+        creature.ApplyStatus(StatusEffect.Poison);
+        var duration = creature.GetStatusTurnsRemaining(StatusEffect.Poison);
+
+        creature.ApplyStatus(StatusEffect.Poison);
+
+        Assert.Equal(2, creature.GetStatusStacks(StatusEffect.Poison));
+        Assert.Equal(duration, creature.GetStatusTurnsRemaining(StatusEffect.Poison));
+    }
+
+    [Fact]
+    public void ApplyStatus_DifferentStatus_DoesNotClearOtherStacks()
+    {
+        var creature = new Creature("Gruk", 100, 10);
+
+        creature.ApplyStatus(StatusEffect.Poison);
+        creature.ApplyStatus(StatusEffect.Poison);
+        creature.ApplyStatus(StatusEffect.Burn);
+
+        Assert.True(creature.Status.HasFlag(StatusEffect.Poison));
+        Assert.True(creature.Status.HasFlag(StatusEffect.Burn));
+        Assert.Equal(2, creature.GetStatusStacks(StatusEffect.Poison));
+        Assert.Equal(1, creature.GetStatusStacks(StatusEffect.Burn));
     }
 
     [Fact]
@@ -98,7 +128,7 @@ public class StatusEffectTests
 
         battle.ExecuteTurn(statusMove, normalMove);
 
-        Assert.Equal(StatusEffect.Poison, p2.Status);
+        Assert.True(p2.Status.HasFlag(StatusEffect.Poison));
     }
 
     [Fact]
@@ -140,7 +170,7 @@ public class StatusEffectTests
             StatusAttack(p1, p2, 1, StatusEffect.Poison),
             Attack(p2, p1, 1));
 
-        Assert.Equal(StatusEffect.Poison, p2.Status);
+        Assert.True(p2.Status.HasFlag(StatusEffect.Poison));
 
         // Turn 2: poison tick = MaxHp/8 = 12; p1 attacks for 1 → p2 HP = 99 - 12 - 1 = 86
         battle.ExecuteTurn(
@@ -166,6 +196,24 @@ public class StatusEffectTests
             Attack(p2, p1, 1));
 
         Assert.Equal(92, p2.CurrentHp);
+    }
+
+    [Fact]
+    public void Bleed_TicksOnNextTurn_DealsEightPointThirtyThreePercentDamage()
+    {
+        var (battle, p1, p2) = CreateBattle(hp1: 100, hp2: 100);
+
+        // Turn 1: p1 attacks p2 for 1 → p2 HP = 99; bleed applied
+        battle.ExecuteTurn(
+            StatusAttack(p1, p2, 1, StatusEffect.Bleed),
+            Attack(p2, p1, 1));
+
+        // Turn 2: bleed tick = MaxHp/12 = 8; p1 attacks for 1 → p2 HP = 99 - 8 - 1 = 90
+        battle.ExecuteTurn(
+            Attack(p1, p2, 1),
+            Attack(p2, p1, 1));
+
+        Assert.Equal(90, p2.CurrentHp);
     }
 
     [Fact]
@@ -221,7 +269,7 @@ public class StatusEffectTests
             StatusAttack(p1, p2, 10, StatusEffect.Poison),
             Attack(p2, p1, 10));
 
-        Assert.Equal(StatusEffect.Poison, result.Creature2Status);
+        Assert.True(result.Creature2Status.HasFlag(StatusEffect.Poison));
         Assert.Equal(StatusEffect.None, result.Creature1Status);
     }
 
@@ -255,7 +303,7 @@ public class StatusEffectTests
 
         Assert.Equal(100, p1.CurrentHp); // p2 was skipped
         Assert.Equal(95, p2.CurrentHp);
-        Assert.Equal(StatusEffect.Paralysis, p2.Status);
+        Assert.True(p2.Status.HasFlag(StatusEffect.Paralysis));
 
         // Turn 2: second skip, Paralysis clears afterward
         battle.ExecuteTurn(
@@ -289,7 +337,7 @@ public class StatusEffectTests
             StatusAttack(p1, p2, 5, StatusEffect.Sleep),
             Attack(p2, p1, 10));
 
-        Assert.Equal(StatusEffect.Sleep, p2.Status);
+        Assert.True(p2.Status.HasFlag(StatusEffect.Sleep));
         Assert.Equal(100, p1.CurrentHp);
 
         // Turn 2: p1 restores mana (no damage to p2) so p2 stays asleep; skip 2/2
@@ -313,14 +361,14 @@ public class StatusEffectTests
             StatusAttack(p1, p2, 5, StatusEffect.Sleep),
             Attack(p2, p1, 10));
 
-        Assert.Equal(StatusEffect.Sleep, p2.Status);
+        Assert.True(p2.Status.HasFlag(StatusEffect.Sleep));
 
         // Turn 2: p1 attacks p2 → p2 wakes up → p2 can act in the same turn
         battle.ExecuteTurn(
             Attack(p1, p2, 5),
             Attack(p2, p1, 10));
 
-        Assert.Equal(StatusEffect.None, p2.Status); // woke up from damage
+        Assert.False(p2.Status.HasFlag(StatusEffect.Sleep)); // woke up from damage
         Assert.Equal(90, p1.CurrentHp);  // p2 attacked after waking
     }
 
@@ -339,7 +387,7 @@ public class StatusEffectTests
             Attack(p2, p1, 10));
 
         Assert.Equal(100, p1.CurrentHp); // p2 was frozen (skipped)
-        Assert.Equal(StatusEffect.None, p2.Status); // Freeze always clears after one turn
+        Assert.False(p2.Status.HasFlag(StatusEffect.Freeze)); // Freeze always clears after one turn
     }
 
     [Fact]
@@ -355,7 +403,7 @@ public class StatusEffectTests
             Attack(p2, p1, 10));
 
         Assert.Equal(90, p1.CurrentHp);  // p2 was not frozen (acted normally)
-        Assert.Equal(StatusEffect.None, p2.Status); // Freeze always clears after one turn
+        Assert.False(p2.Status.HasFlag(StatusEffect.Freeze)); // Freeze always clears after one turn
     }
 
     [Fact]
@@ -370,7 +418,7 @@ public class StatusEffectTests
             StatusAttack(p1, p2, 5, StatusEffect.Freeze),
             Attack(p2, p1, 10));
 
-        Assert.Equal(StatusEffect.None, p2.Status);
+        Assert.False(p2.Status.HasFlag(StatusEffect.Freeze));
 
         // Turn 2: p2 has no status, acts normally regardless of roll
         battle.ExecuteTurn(

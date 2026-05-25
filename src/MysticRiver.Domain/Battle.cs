@@ -7,8 +7,9 @@ public sealed class Battle {
     public bool IsOver => Creature1.IsDead || Creature2.IsDead;
 
     private readonly Func<double> _rollSkip;
+    private readonly IMoveResolver _moveResolver;
 
-    public Battle(Creature creature1, Creature creature2, Func<double>? rollSkip = null) {
+    public Battle(Creature creature1, Creature creature2, Func<double>? rollSkip = null, IMoveResolver? moveResolver = null) {
         ArgumentNullException.ThrowIfNull(creature1);
         ArgumentNullException.ThrowIfNull(creature2);
 
@@ -19,6 +20,7 @@ public sealed class Battle {
         Creature1 = creature1;
         Creature2 = creature2;
         _rollSkip = rollSkip ?? Random.Shared.NextDouble;
+        _moveResolver = moveResolver ?? new DefaultMoveResolver();
     }
 
     /// <summary>
@@ -107,6 +109,8 @@ public sealed class Battle {
             creature2Hp: Creature2.CurrentHp,
             creature1Status: Creature1.Status,
             creature2Status: Creature2.Status,
+            creature1CrowdControl: Creature1.CrowdControl,
+            creature2CrowdControl: Creature2.CrowdControl,
             finalResult: outcome
         );
     }
@@ -139,11 +143,11 @@ public sealed class Battle {
         var actorA = GetActor(a);
         var actorB = GetActor(b);
 
-        if (actorA.Initiative > actorB.Initiative) {
+        if (actorA.EffectiveInitiative > actorB.EffectiveInitiative) {
             return (a, b);
         }
 
-        if (actorB.Initiative > actorA.Initiative) {
+        if (actorB.EffectiveInitiative > actorA.EffectiveInitiative) {
             return (b, a);
         }
 
@@ -165,70 +169,10 @@ public sealed class Battle {
             return;
         }
 
-        if (actor.IsCrowdControlSilenced && IsManaMove(move)) {
+        if (actor.IsCrowdControlSilenced && _moveResolver.IsManaMove(move)) {
             return;
         }
 
-        ApplyMove(move);
-    }
-
-    private static bool IsManaMove(Move move) =>
-        move is HealMove or ShieldMove or ManaBurnMove or ManaDrainMove;
-
-    private static void ApplyMove(Move move) {
-        switch (move) {
-            case DamageMove dm:
-                dm.Destination.TakeDamage(dm.DamageAmount, dm.Kind);
-                break;
-
-            case HealMove hm:
-                if (hm.Self.TryConsumeMana(hm.ManaCost)) {
-                    hm.Self.Heal(hm.HealAmount);
-                }
-                break;
-
-            case ShieldMove sm:
-                if (sm.Self.TryConsumeMana(sm.ManaCost)) {
-                    sm.Self.ApplyShield(sm.ShieldAmount);
-                }
-                break;
-
-            case ManaRestoreMove mrm:
-                mrm.Self.RestoreMana(mrm.ManaAmount);
-                break;
-
-            case ManaBurnMove mbm:
-                mbm.Self.TryConsumeMana(mbm.ManaAmount);
-                break;
-
-            case ManaDrainMove mdm:
-                mdm.Destination.TryConsumeMana(mdm.ManaAmount);
-                break;
-
-            case ResistanceShredMove rsm:
-                if (rsm.Kind == DamageKind.Physical) {
-                    rsm.Destination.PhysicalResistance =
-                        Math.Max(0, rsm.Destination.PhysicalResistance - rsm.FlatShred);
-                }
-                else {
-                    rsm.Destination.MagicalResistance =
-                        Math.Max(0, rsm.Destination.MagicalResistance - rsm.FlatShred);
-                }
-                break;
-
-            case StatusDamageMove sdm:
-                sdm.Destination.TakeDamage(sdm.DamageAmount, sdm.Kind);
-                if (!sdm.Destination.IsDead) {
-                    sdm.Destination.ApplyStatus(sdm.Effect);
-                }
-                break;
-
-            case CrowdControlMove ccm:
-                ccm.Destination.ApplyCrowdControl(ccm.CrowdControlType, ccm.Turns);
-                break;
-
-            default:
-                throw new ArgumentException($"Unhandled move type: {move.GetType().Name}");
-        }
+        _moveResolver.Resolve(move);
     }
 }

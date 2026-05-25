@@ -5,5 +5,12 @@ public sealed record BattleCreatureDto(
     string Name,
     int MaxHp,
     int CurrentHp,
+    int MaxMana,
+    int CurrentMana,
     int Initiative,
+    int EffectiveInitiative,
+    int CurrentShield,
+    IReadOnlyList<StatusEffectStateDto> StatusEffects,
+    CrowdControlKind CrowdControl,
+    int CrowdControlTurnsRemaining,
     bool IsDead);
