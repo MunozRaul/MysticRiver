@@ -9,11 +9,12 @@ namespace MysticRiver.HttpApi.Battles;
 public sealed class TokenSweeperService : BackgroundService {
     private readonly IConnectionMapping _mapping;
     private readonly ILogger<TokenSweeperService> _logger;
-    private readonly TimeSpan _sweepInterval = TimeSpan.FromMinutes(1);
+    private readonly TimeSpan _sweepInterval;
 
-    public TokenSweeperService(IConnectionMapping mapping, ILogger<TokenSweeperService> logger) {
+    public TokenSweeperService(IConnectionMapping mapping, ILogger<TokenSweeperService> logger, TimeSpan? sweepInterval = null) {
         _mapping = mapping ?? throw new ArgumentNullException(nameof(mapping));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+        _sweepInterval = sweepInterval ?? TimeSpan.FromMinutes(1);
     }
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken) {
