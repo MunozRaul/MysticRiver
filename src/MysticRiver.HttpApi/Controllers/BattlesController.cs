@@ -22,6 +22,40 @@ public sealed class BattlesController(
     private readonly IConnectionMapping _connectionMapping = connectionMapping;
     private readonly ILogger<BattlesController> _logger = logger;
 
+    [HttpPost("matches/create")]
+    public ActionResult<CreateMatchResponse> CreateMatch([FromBody] CreateMatchRequest request) {
+        try {
+            var response = _battleService.CreateMatch(request);
+            _logger.LogInformation("Match {BattleId} created for host {HostPlayerId}", response.BattleId, response.HostPlayerId);
+            return Ok(response);
+        }
+        catch (ArgumentException exception) {
+            _logger.LogWarning("Match creation failed: {Reason}", exception.Message);
+            return BadRequest(CreateProblem("Invalid match setup.", exception.Message));
+        }
+    }
+
+    [HttpPost("{battleId}/matches/join")]
+    public ActionResult<JoinMatchResponse> JoinMatch(string battleId, [FromBody] JoinMatchRequest request) {
+        try {
+            var response = _battleService.JoinMatch(battleId, request);
+            _logger.LogInformation("Match {BattleId} joined by guest {GuestPlayerId}", response.BattleId, response.GuestPlayerId);
+            return Ok(response);
+        }
+        catch (KeyNotFoundException exception) {
+            _logger.LogWarning("Join match failed for battle {BattleId}: {Reason}", battleId, exception.Message);
+            return NotFound(CreateProblem("Match not found.", exception.Message));
+        }
+        catch (InvalidOperationException exception) {
+            _logger.LogWarning("Join match failed for battle {BattleId}: {Reason}", battleId, exception.Message);
+            return BadRequest(CreateProblem("Match cannot be joined.", exception.Message));
+        }
+        catch (ArgumentException exception) {
+            _logger.LogWarning("Join match failed for battle {BattleId}: {Reason}", battleId, exception.Message);
+            return BadRequest(CreateProblem("Invalid join request.", exception.Message));
+        }
+    }
+
     [HttpPost("start")]
     public ActionResult<StartBattleResponse> StartBattle([FromBody] StartBattleRequest request) {
         try {
@@ -53,6 +87,23 @@ public sealed class BattlesController(
 
     [HttpPost("{battleId}/abandon")]
     public async Task<ActionResult<BattleStateDto>> AbandonBattle(string battleId, [FromBody] AbandonBattleRequest request) {
+        bool requiresToken;
+        try {
+            requiresToken = _battleService.RequiresPlayerToken(battleId);
+        }
+        catch (KeyNotFoundException exception) {
+            _logger.LogWarning("Battle {BattleId} not found for abandon", battleId);
+            return NotFound(CreateProblem("Battle not found.", exception.Message));
+        }
+
+        if (!requiresToken) {
+            return await ExecuteBattleActionAsync(
+                battleId,
+                () => _battleService.AbandonBattle(battleId, request),
+                "Invalid abandon request.",
+                "abandon");
+        }
+
         // Validate token from header maps to this battle and player
         if (!Request.Headers.TryGetValue("X-Player-Token", out var tokenValues)) {
             _logger.LogWarning("Missing player token for abandon on battle {BattleId}", battleId);
@@ -89,6 +140,23 @@ public sealed class BattlesController(
     /// </summary>
     [HttpPost("{battleId}/actions/basic-attack")]
     public async Task<ActionResult<BattleStateDto>> ExecuteBasicAttack(string battleId, [FromBody] ExecuteBasicAttackRequest request) {
+        bool requiresToken;
+        try {
+            requiresToken = _battleService.RequiresPlayerToken(battleId);
+        }
+        catch (KeyNotFoundException exception) {
+            _logger.LogWarning("Battle {BattleId} not found for basic-attack", battleId);
+            return NotFound(CreateProblem("Battle not found.", exception.Message));
+        }
+
+        if (!requiresToken) {
+            return await ExecuteBattleActionAsync(
+                battleId,
+                () => _battleService.ExecuteBasicAttack(battleId, request),
+                "Invalid attack request.",
+                "basic attack");
+        }
+
         // Validate token header maps to this battle and attacker
         if (!Request.Headers.TryGetValue("X-Player-Token", out var tokenValues)) {
             _logger.LogWarning("Missing player token for basic-attack on battle {BattleId}", battleId);
@@ -119,6 +187,23 @@ public sealed class BattlesController(
     [HttpPost("{battleId}/actions/ability")]
     public async Task<ActionResult<BattleStateDto>> ExecuteAbility(string battleId, [FromBody] ExecuteAbilityRequest request)
     {
+        bool requiresToken;
+        try {
+            requiresToken = _battleService.RequiresPlayerToken(battleId);
+        }
+        catch (KeyNotFoundException exception) {
+            _logger.LogWarning("Battle {BattleId} not found for ability execution", battleId);
+            return NotFound(CreateProblem("Battle not found.", exception.Message));
+        }
+
+        if (!requiresToken) {
+            return await ExecuteBattleActionAsync(
+                battleId,
+                () => _battleService.ExecuteAbility(battleId, request),
+                "Invalid ability request.",
+                $"ability {request.AbilityId}");
+        }
+
         // Validate token header maps to this battle and attacker
         if (!Request.Headers.TryGetValue("X-Player-Token", out var tokenValues)) {
             _logger.LogWarning("Missing player token for ability on battle {BattleId}", battleId);

@@ -1,4 +1,5 @@
 using MysticRiver.Domain;
+using MysticRiver.Contracts.Battle;
 
 namespace MysticRiver.Application.Battles;
 
@@ -12,6 +13,9 @@ public sealed class BattleSession {
     public int RoundNumber { get; private set; }
     public int StateVersion { get; private set; }
     public int EnemyAttackPower { get; }
+    public MatchStatus MatchStatus { get; private set; }
+    public string? HostPlayerId { get; private set; }
+    public string? GuestPlayerId { get; private set; }
     public string? ForcedWinnerCreatureId => _forcedWinnerCreatureId;
     public bool IsConcluded => _forcedWinnerCreatureId is not null || Battle.IsOver;
     public object SyncRoot => _syncRoot;
@@ -26,10 +30,43 @@ public sealed class BattleSession {
         EnemyAttackPower = enemyAttackPower;
         RoundNumber = 1;
         StateVersion = 1;
+        MatchStatus = MatchStatus.InProgress;
         _creaturesById = new Dictionary<string, Creature>(StringComparer.OrdinalIgnoreCase) {
             [BattleParticipantIds.Player] = battle.Creature1,
             [BattleParticipantIds.Enemy] = battle.Creature2
         };
+    }
+
+    public void InitializeLobby(string hostPlayerId) {
+        ArgumentException.ThrowIfNullOrWhiteSpace(hostPlayerId);
+
+        if (HostPlayerId is not null) {
+            throw new InvalidOperationException("Host player is already assigned.");
+        }
+
+        HostPlayerId = hostPlayerId;
+        MatchStatus = MatchStatus.WaitingForOpponent;
+        StateVersion++;
+    }
+
+    public void JoinGuest(string guestPlayerId) {
+        ArgumentException.ThrowIfNullOrWhiteSpace(guestPlayerId);
+
+        if (HostPlayerId is null) {
+            throw new InvalidOperationException("Cannot join a match without a host.");
+        }
+
+        if (GuestPlayerId is not null) {
+            throw new InvalidOperationException("This match already has a second player.");
+        }
+
+        if (string.Equals(HostPlayerId, guestPlayerId, StringComparison.OrdinalIgnoreCase)) {
+            throw new ArgumentException("Host and guest players must be different.");
+        }
+
+        GuestPlayerId = guestPlayerId;
+        MatchStatus = MatchStatus.Ready;
+        StateVersion++;
     }
 
     public Creature GetRequiredCreature(string creatureId) {
@@ -55,8 +92,16 @@ public sealed class BattleSession {
     }
 
     public void AdvanceRound() {
+        if (MatchStatus == MatchStatus.Ready) {
+            MatchStatus = MatchStatus.InProgress;
+        }
+
         RoundNumber++;
         StateVersion++;
+
+        if (Battle.IsOver) {
+            MatchStatus = MatchStatus.Completed;
+        }
     }
 
     public void Concede(string abandoningCreatureId) {
@@ -69,6 +114,13 @@ public sealed class BattleSession {
         var abandoningCreature = GetRequiredCreature(abandoningCreatureId);
         var winnerCreature = ReferenceEquals(abandoningCreature, Battle.Creature1) ? Battle.Creature2 : Battle.Creature1;
         _forcedWinnerCreatureId = GetCreatureId(winnerCreature);
+        MatchStatus = MatchStatus.Completed;
         StateVersion++;
+    }
+
+    public void EnsureActionsAllowed() {
+        if (MatchStatus == MatchStatus.WaitingForOpponent) {
+            throw new InvalidOperationException("Match is waiting for an opponent.");
+        }
     }
 }
