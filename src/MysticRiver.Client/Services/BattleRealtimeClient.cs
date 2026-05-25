@@ -44,10 +44,12 @@ public sealed class BattleRealtimeClient : IAsyncDisposable {
         await _hubConnection.StartAsync(cancellationToken);
     }
 
-    public async Task JoinBattleAsync(string battleId, CancellationToken cancellationToken = default) {
+    public async Task<string> JoinBattleAsync(string battleId, string playerId, CancellationToken cancellationToken = default) {
         ArgumentException.ThrowIfNullOrWhiteSpace(battleId);
+        ArgumentException.ThrowIfNullOrWhiteSpace(playerId);
         await EnsureConnectedAsync(cancellationToken);
-        await _hubConnection.InvokeAsync("JoinBattle", battleId, cancellationToken);
+        var token = await _hubConnection.InvokeAsync<string>("JoinBattle", battleId, playerId, cancellationToken);
+        return token;
     }
 
     public async Task DisconnectAsync(CancellationToken cancellationToken = default) {

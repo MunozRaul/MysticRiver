@@ -89,7 +89,8 @@ SetAbilities(CreatePlaceholderBattleAbilities());
         ApplyState(response.State);
 
         await LoadAbilitiesAsync();
-        await _battleRealtimeClient.JoinBattleAsync(battleId);
+        var token = await _battleRealtimeClient.JoinBattleAsync(battleId, playerId);
+        _battleApiClient.SetPlayerToken(token);
         SetStatus("Connected. Real-time updates are active. Enemy selected as default target.");
         isInitialized = true;
     }
