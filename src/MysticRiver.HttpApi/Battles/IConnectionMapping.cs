@@ -1,0 +1,11 @@
+using System.Collections.Generic;
+
+namespace MysticRiver.HttpApi.Battles;
+
+public interface IConnectionMapping {
+    void Register(string connectionId, string battleId, string playerId);
+    void Unregister(string connectionId);
+    bool TryGetPlayer(string connectionId, out string? playerId);
+    IEnumerable<string> GetConnectionsForBattle(string battleId);
+    IEnumerable<(string ConnectionId, string PlayerId)> GetConnectionsForBattleWithPlayers(string battleId);
+}
