@@ -9,7 +9,7 @@ public interface IBattleService {
     BattleStateDto GetBattleState(string battleId);
     bool RequiresPlayerToken(string battleId);
     IReadOnlyList<AbilityDefinitionDto> GetAbilities();
-    BattleActionResult ExecuteBasicAttack(string battleId, ExecuteBasicAttackRequest request);
-    BattleActionResult ExecuteAbility(string battleId, ExecuteAbilityRequest request);
-    BattleActionResult AbandonBattle(string battleId, AbandonBattleRequest request);
+    BattleActionResult ExecuteBasicAttack(string battleId, ExecuteBasicAttackRequest request, string? actingPlayerId = null);
+    BattleActionResult ExecuteAbility(string battleId, ExecuteAbilityRequest request, string? actingPlayerId = null);
+    BattleActionResult AbandonBattle(string battleId, AbandonBattleRequest request, string? actingPlayerId = null);
 }

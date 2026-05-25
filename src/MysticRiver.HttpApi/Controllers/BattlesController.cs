@@ -114,14 +114,9 @@ public sealed class BattlesController(
             _logger.LogWarning("Invalid or expired token for abandon on battle {BattleId}", battleId);
             return StatusCode(403, CreateProblem("Unauthorized", "Invalid or expired player token."));
         }
-        if (tokPlayer != request.AbandoningCreatureId) {
-            _logger.LogWarning("Token player mismatch for abandon on battle {BattleId}: tokenPlayer={TokenPlayer} requestPlayer={RequestPlayer}", battleId, tokPlayer, request.AbandoningCreatureId);
-            return StatusCode(403, CreateProblem("Unauthorized", "Token does not own the abandoning creature."));
-        }
-
         return await ExecuteBattleActionAsync(
             battleId,
-            () => _battleService.AbandonBattle(battleId, request),
+            () => _battleService.AbandonBattle(battleId, request, tokPlayer),
             "Invalid abandon request.",
             "abandon");
     }
@@ -167,14 +162,9 @@ public sealed class BattlesController(
             _logger.LogWarning("Invalid or expired token for basic-attack on battle {BattleId}", battleId);
             return StatusCode(403, CreateProblem("Unauthorized", "Invalid or expired player token."));
         }
-        if (tokPlayer != request.AttackerId) {
-            _logger.LogWarning("Token player mismatch for basic-attack on battle {BattleId}: tokenPlayer={TokenPlayer} requestPlayer={RequestPlayer}", battleId, tokPlayer, request.AttackerId);
-            return StatusCode(403, CreateProblem("Unauthorized", "Token does not own the attacker creature."));
-        }
-
         return await ExecuteBattleActionAsync(
             battleId,
-            () => _battleService.ExecuteBasicAttack(battleId, request),
+            () => _battleService.ExecuteBasicAttack(battleId, request, tokPlayer),
             "Invalid attack request.",
             "basic attack");
     }
@@ -214,14 +204,9 @@ public sealed class BattlesController(
             _logger.LogWarning("Invalid or expired token for ability on battle {BattleId}", battleId);
             return StatusCode(403, CreateProblem("Unauthorized", "Invalid or expired player token."));
         }
-        if (tokPlayer != request.AttackerId) {
-            _logger.LogWarning("Token player mismatch for ability on battle {BattleId}: tokenPlayer={TokenPlayer} requestPlayer={RequestPlayer}", battleId, tokPlayer, request.AttackerId);
-            return StatusCode(403, CreateProblem("Unauthorized", "Token does not own the attacker creature."));
-        }
-
         return await ExecuteBattleActionAsync(
             battleId,
-            () => _battleService.ExecuteAbility(battleId, request),
+            () => _battleService.ExecuteAbility(battleId, request, tokPlayer),
             "Invalid ability request.",
             $"ability {request.AbilityId}");
     }

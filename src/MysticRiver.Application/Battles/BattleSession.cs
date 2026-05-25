@@ -7,6 +7,7 @@ public sealed class BattleSession {
     private readonly Dictionary<string, Creature> _creaturesById;
     private readonly object _syncRoot = new();
     private string? _forcedWinnerCreatureId;
+    private string? _currentTurnCreatureId;
 
     public string BattleId { get; }
     public Battle Battle { get; }
@@ -16,6 +17,7 @@ public sealed class BattleSession {
     public MatchStatus MatchStatus { get; private set; }
     public string? HostPlayerId { get; private set; }
     public string? GuestPlayerId { get; private set; }
+    public string? CurrentTurnCreatureId => _currentTurnCreatureId;
     public string? ForcedWinnerCreatureId => _forcedWinnerCreatureId;
     public bool IsConcluded => _forcedWinnerCreatureId is not null || Battle.IsOver;
     public object SyncRoot => _syncRoot;
@@ -66,6 +68,7 @@ public sealed class BattleSession {
 
         GuestPlayerId = guestPlayerId;
         MatchStatus = MatchStatus.Ready;
+        _currentTurnCreatureId = DetermineInitialTurnCreatureId();
         StateVersion++;
     }
 
@@ -96,6 +99,12 @@ public sealed class BattleSession {
             MatchStatus = MatchStatus.InProgress;
         }
 
+        if (IsMultiplayerMatch() && _currentTurnCreatureId is not null && !Battle.IsOver) {
+            _currentTurnCreatureId = string.Equals(_currentTurnCreatureId, BattleParticipantIds.Player, StringComparison.OrdinalIgnoreCase)
+                ? BattleParticipantIds.Enemy
+                : BattleParticipantIds.Player;
+        }
+
         RoundNumber++;
         StateVersion++;
 
@@ -122,5 +131,69 @@ public sealed class BattleSession {
         if (MatchStatus == MatchStatus.WaitingForOpponent) {
             throw new InvalidOperationException("Match is waiting for an opponent.");
         }
+    }
+
+    public bool IsMultiplayerMatch() => HostPlayerId is not null && GuestPlayerId is not null;
+
+    public string GetAssignedCreatureIdForPlayer(string playerId) {
+        ArgumentException.ThrowIfNullOrWhiteSpace(playerId);
+
+        if (!IsMultiplayerMatch()) {
+            throw new InvalidOperationException("Player-to-creature assignment is only available for multiplayer matches.");
+        }
+
+        if (string.Equals(playerId, HostPlayerId, StringComparison.OrdinalIgnoreCase)) {
+            return BattleParticipantIds.Player;
+        }
+
+        if (string.Equals(playerId, GuestPlayerId, StringComparison.OrdinalIgnoreCase)) {
+            return BattleParticipantIds.Enemy;
+        }
+
+        throw new InvalidOperationException("Player does not belong to this match.");
+    }
+
+    public void EnsurePlayerOwnsCreature(string playerId, string creatureId) {
+        var expectedCreatureId = GetAssignedCreatureIdForPlayer(playerId);
+        if (!string.Equals(expectedCreatureId, creatureId, StringComparison.OrdinalIgnoreCase)) {
+            throw new InvalidOperationException("Player does not own the requested creature.");
+        }
+    }
+
+    public void EnsureCurrentTurnCreature(string creatureId) {
+        ArgumentException.ThrowIfNullOrWhiteSpace(creatureId);
+
+        if (!IsMultiplayerMatch()) {
+            return;
+        }
+
+        if (_currentTurnCreatureId is null) {
+            throw new InvalidOperationException("Turn order is not initialized for this match.");
+        }
+
+        if (!string.Equals(_currentTurnCreatureId, creatureId, StringComparison.OrdinalIgnoreCase)) {
+            throw new InvalidOperationException("It is not this creature's turn.");
+        }
+    }
+
+    public string GetOpponentCreatureId(string creatureId) {
+        return string.Equals(creatureId, BattleParticipantIds.Player, StringComparison.OrdinalIgnoreCase)
+            ? BattleParticipantIds.Enemy
+            : BattleParticipantIds.Player;
+    }
+
+    private string DetermineInitialTurnCreatureId() {
+        var creature1 = Battle.Creature1;
+        var creature2 = Battle.Creature2;
+
+        if (creature1.EffectiveInitiative > creature2.EffectiveInitiative) {
+            return BattleParticipantIds.Player;
+        }
+
+        if (creature2.EffectiveInitiative > creature1.EffectiveInitiative) {
+            return BattleParticipantIds.Enemy;
+        }
+
+        return BattleParticipantIds.Player;
     }
 }
