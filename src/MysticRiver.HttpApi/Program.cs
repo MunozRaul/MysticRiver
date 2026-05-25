@@ -12,6 +12,7 @@ builder.Services.AddSignalR();
 builder.Services.AddSingleton<IBattleSessionStore, InMemoryBattleSessionStore>();
 builder.Services.AddSingleton<IBattleService, BattleService>();
 builder.Services.AddSingleton<IConnectionMapping, ConnectionMappingService>();
+builder.Services.AddHostedService<TokenSweeperService>();
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
 builder.Services.AddOpenApi();
 

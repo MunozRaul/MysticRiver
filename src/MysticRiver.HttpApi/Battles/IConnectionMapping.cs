@@ -13,4 +13,7 @@ public interface IConnectionMapping {
     string CreateToken(string connectionId, string battleId, string playerId, string? displayName = null, bool singleUse = false);
     bool TryGetByToken(string token, out string? battleId, out string? playerId, out string? displayName);
     void RemoveToken(string token);
+
+    // Proactively remove expired tokens from internal storage (sweep)
+    void RemoveExpiredTokens();
 }

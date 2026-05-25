@@ -64,4 +64,12 @@ public sealed class ConnectionMappingService : IConnectionMapping {
     }
 
     public void RemoveToken(string token) => _tokens.TryRemove(token, out _);
+
+    public void RemoveExpiredTokens() {
+        var now = DateTimeOffset.UtcNow;
+        var expired = _tokens.Where(kv => now - kv.Value.CreatedAt > TokenTtl).Select(kv => kv.Key).ToList();
+        foreach (var k in expired) {
+            _tokens.TryRemove(k, out _);
+        }
+    }
 }
