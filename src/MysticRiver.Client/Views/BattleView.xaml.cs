@@ -285,6 +285,7 @@ SetAbilities(CreatePlaceholderBattleAbilities());
 
         // Store current turn info for multiplayer gating
         currentTurnCreatureId = state.CurrentTurnCreatureId;
+        UpdateTurnIndicator(state);
 
         // Update player creature stats
         UpdateCreatureDisplay(playerCreature, PlayerHpTextBlock, PlayerHpBar, PlayerManaTextBlock, PlayerManaBar, PlayerShieldTextBlock, PlayerCCTextBlock, PlayerStatusPanel);
@@ -402,17 +403,30 @@ SetAbilities(CreatePlaceholderBattleAbilities());
             return;
         }
 
-        // Order creatures by EffectiveInitiative (higher acts first)
-        var ordered = new List<BattleCreatureDto> { state.Creature1, state.Creature2 }
+        var creatures = new List<BattleCreatureDto> { state.Creature1, state.Creature2 };
+        var ordered = creatures
             .OrderByDescending(c => c.EffectiveInitiative)
             .ToList();
 
-        // Build a repeating next-turn sequence of length 4
         var sequence = new List<BattleCreatureDto>();
-        while (sequence.Count < 4) {
-            foreach (var c in ordered) {
-                sequence.Add(c);
-                if (sequence.Count >= 4) { break; }
+        if (isMultiplayer && !string.IsNullOrWhiteSpace(currentTurnCreatureId)) {
+            var currentTurnCreature = creatures.FirstOrDefault(c => string.Equals(c.CreatureId, currentTurnCreatureId, StringComparison.OrdinalIgnoreCase));
+            if (currentTurnCreature is not null) {
+                var otherCreature = creatures.First(c => !string.Equals(c.CreatureId, currentTurnCreature.CreatureId, StringComparison.OrdinalIgnoreCase));
+                sequence.Add(currentTurnCreature);
+                sequence.Add(otherCreature);
+                sequence.Add(currentTurnCreature);
+                sequence.Add(otherCreature);
+            }
+        }
+
+        if (sequence.Count == 0) {
+            // Build a repeating next-turn sequence from initiative order when turn ownership is unknown.
+            while (sequence.Count < 4) {
+                foreach (var c in ordered) {
+                    sequence.Add(c);
+                    if (sequence.Count >= 4) { break; }
+                }
             }
         }
 
@@ -430,8 +444,8 @@ SetAbilities(CreatePlaceholderBattleAbilities());
             var c = sequence[i];
             var tb = tbs[i];
             var bd = borders[i];
-            var isCurrentTurn = isMultiplayer && string.Equals(c.CreatureId, currentTurnCreatureId, StringComparison.OrdinalIgnoreCase);
-            var highlightIndex = i == 0 || isCurrentTurn ? 0 : i;
+            var isCurrentTurn = string.Equals(c.CreatureId, currentTurnCreatureId, StringComparison.OrdinalIgnoreCase);
+            var highlightIndex = isCurrentTurn ? 0 : i;
             if (tb is not null) {
                 var indicator = isCurrentTurn ? " ★" : "";
                 tb.Text = $"{i + 1}. {c.Name} ({c.EffectiveInitiative}){indicator}";
@@ -708,6 +722,26 @@ SetAbilities(CreatePlaceholderBattleAbilities());
 
     private void SetStatus(string status) {
         BattleStatusTextBlock.Text = status;
+    }
+
+    private void UpdateTurnIndicator(BattleStateDto state) {
+        if (state.BattleEnded) {
+            TurnIndicatorTextBlock.Text = "Battle ended";
+            TurnIndicatorTextBlock.Foreground = new SolidColorBrush(Color.FromRgb(229, 231, 235));
+            return;
+        }
+
+        var isPlayerTurn = !string.IsNullOrWhiteSpace(currentTurnCreatureId)
+            && string.Equals(currentTurnCreatureId, playerCreatureId, StringComparison.OrdinalIgnoreCase);
+
+        if (isPlayerTurn) {
+            TurnIndicatorTextBlock.Text = "Your turn";
+            TurnIndicatorTextBlock.Foreground = new SolidColorBrush(Color.FromRgb(74, 222, 128));
+        }
+        else {
+            TurnIndicatorTextBlock.Text = "Enemy turn";
+            TurnIndicatorTextBlock.Foreground = new SolidColorBrush(Color.FromRgb(248, 113, 113));
+        }
     }
 
     private static IReadOnlyList<AbilityOption> CreatePlaceholderBattleAbilities() {
