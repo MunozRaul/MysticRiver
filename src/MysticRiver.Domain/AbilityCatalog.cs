@@ -19,7 +19,7 @@ public enum AbilityTarget
 
 public sealed class AbilityDefinition
 {
-    private readonly Func<Creature, Creature?, Move> createMove;
+    private readonly Func<Creature, Creature?, Move> _createMove;
 
     public AbilityDefinition(
         string id,
@@ -39,12 +39,12 @@ public sealed class AbilityDefinition
             throw new ArgumentException("Ability name is required.", nameof(name));
         }
 
-        this.Id = id;
-        this.Name = name;
-        this.Target = target;
-        this.Tags = tags;
-        this.ManaCost = manaCost;
-        this.createMove = createMove ?? throw new ArgumentNullException(nameof(createMove));
+        Id = id;
+        Name = name;
+        Target = target;
+        Tags = tags;
+        ManaCost = manaCost;
+        _createMove = createMove ?? throw new ArgumentNullException(nameof(createMove));
     }
 
     public string Id { get; }
@@ -57,18 +57,18 @@ public sealed class AbilityDefinition
     {
         ArgumentNullException.ThrowIfNull(source);
 
-        if (this.Target == AbilityTarget.Enemy && target is null)
+        if (Target == AbilityTarget.Enemy && target is null)
         {
             throw new ArgumentNullException(nameof(target));
         }
 
-        return this.createMove(source, target ?? source);
+        return _createMove(source, target ?? source);
     }
 }
 
 public static class AbilityCatalog
 {
-    private static readonly IReadOnlyDictionary<string, AbilityDefinition> Definitions =
+    private static readonly IReadOnlyDictionary<string, AbilityDefinition> _definitions =
         new Dictionary<string, AbilityDefinition>(StringComparer.OrdinalIgnoreCase)
         {
             ["basic-attack"] = new AbilityDefinition(
@@ -199,10 +199,10 @@ public static class AbilityCatalog
                 }),
         };
 
-    private static readonly IReadOnlyCollection<AbilityDefinition> AllDefinitions =
-        new List<AbilityDefinition>(Definitions.Values);
+    private static readonly IReadOnlyCollection<AbilityDefinition> _allDefinitions =
+        new List<AbilityDefinition>(_definitions.Values);
 
-    public static IReadOnlyCollection<AbilityDefinition> All => AllDefinitions;
+    public static IReadOnlyCollection<AbilityDefinition> All => _allDefinitions;
 
     public static bool TryGetById(string id, out AbilityDefinition? definition)
     {
@@ -212,6 +212,6 @@ public static class AbilityCatalog
             return false;
         }
 
-        return Definitions.TryGetValue(id, out definition);
+        return _definitions.TryGetValue(id, out definition);
     }
 }
