@@ -148,6 +148,11 @@ SetAbilities(CreatePlaceholderBattleAbilities());
             return;
         }
 
+        if (isMultiplayer && !string.Equals(currentTurnCreatureId, playerCreatureId, StringComparison.OrdinalIgnoreCase)) {
+            SetStatus("Waiting for your turn.");
+            return;
+        }
+
         if (battleId is null || isAttackInProgress) {
             return;
         }
@@ -204,6 +209,10 @@ SetAbilities(CreatePlaceholderBattleAbilities());
                     var isSpellAttack = IsSpellAttack(summary);
                     if (isSpellAttack) {
                         await AnimateSpellProjectileAsync(summary.ActorId, summary.TargetId);
+                    }
+
+                    if (IsHealingMove(summary)) {
+                        await AnimateHealingBurstAsync(summary.ActorId, summary.TargetId);
                     }
 
                     AppendActionSummary(summary, battleEvent.State);
@@ -318,14 +327,14 @@ SetAbilities(CreatePlaceholderBattleAbilities());
         hpTextBlock.Text = $"HP {creature.CurrentHp}/{creature.MaxHp}";
         var hpPercent = creature.MaxHp > 0 ? (double)creature.CurrentHp / creature.MaxHp : 0;
         var hpParent = hpBar.Parent as Border;
-        var hpMaxWidth = hpParent?.ActualWidth ?? 260; // Fallback to 260 if not yet rendered
+        var hpMaxWidth = hpParent is null || hpParent.ActualWidth <= 0 ? 260 : hpParent.ActualWidth; // Fallback to 260 if not yet rendered
         hpBar.Width = hpPercent * hpMaxWidth;
         
         // Update Mana text and bar
         manaTextBlock.Text = $"Mana {creature.CurrentMana}/{creature.MaxMana}";
         var manaPercent = creature.MaxMana > 0 ? (double)creature.CurrentMana / creature.MaxMana : 0;
         var manaParent = manaBar.Parent as Border;
-        var manaMaxWidth = manaParent?.ActualWidth ?? 260; // Fallback to 260 if not yet rendered
+        var manaMaxWidth = manaParent is null || manaParent.ActualWidth <= 0 ? 260 : manaParent.ActualWidth; // Fallback to 260 if not yet rendered
         manaBar.Width = manaPercent * manaMaxWidth;
         
         // Update Shield
@@ -582,6 +591,97 @@ SetAbilities(CreatePlaceholderBattleAbilities());
         return tcs.Task;
     }
 
+    private Task AnimateHealingBurstAsync(string actorId, string? targetId) {
+        var targetCreatureId = targetId ?? actorId;
+        var targetPanel = string.Equals(targetCreatureId, playerCreatureId, StringComparison.OrdinalIgnoreCase) ? PlayerCreaturePanel : EnemyCreaturePanel;
+
+        if (targetPanel is null || BattleEffectCanvas is null) {
+            return Task.CompletedTask;
+        }
+
+        var center = targetPanel.TranslatePoint(new Point(targetPanel.ActualWidth / 2, targetPanel.ActualHeight / 2), BattleEffectCanvas);
+        var count = 8;
+        var completed = 0;
+        var tcs = new TaskCompletionSource<bool>();
+
+        for (var i = 0; i < count; i++) {
+            var particle = new Ellipse {
+                Width = 10,
+                Height = 10,
+                Opacity = 0.0,
+                IsHitTestVisible = false,
+                Fill = new RadialGradientBrush(
+                    Color.FromRgb(187, 247, 208),
+                    Color.FromRgb(34, 197, 94))
+                {
+                    GradientOrigin = new Point(0.35, 0.35),
+                    Center = new Point(0.45, 0.45),
+                    RadiusX = 0.6,
+                    RadiusY = 0.6
+                },
+                RenderTransform = new ScaleTransform(0.8, 0.8)
+            };
+
+            var angle = (Math.PI * 2 * i) / count;
+            var distance = 28 + (i % 3) * 12;
+            var endX = center.X + Math.Cos(angle) * distance - particle.Width / 2;
+            var endY = center.Y + Math.Sin(angle) * distance - particle.Height / 2 - 12;
+
+            Canvas.SetLeft(particle, center.X - particle.Width / 2);
+            Canvas.SetTop(particle, center.Y - particle.Height / 2);
+            BattleEffectCanvas.Children.Add(particle);
+
+            var duration = TimeSpan.FromMilliseconds(650);
+            var easing = new QuadraticEase { EasingMode = EasingMode.EaseOut };
+
+            var leftAnimation = new DoubleAnimation {
+                To = endX,
+                Duration = duration,
+                EasingFunction = easing
+            };
+
+            var topAnimation = new DoubleAnimation {
+                To = endY,
+                Duration = duration,
+                EasingFunction = easing
+            };
+
+            var opacityAnimation = new DoubleAnimation {
+                From = 0.0,
+                To = 1.0,
+                Duration = TimeSpan.FromMilliseconds(120),
+                AutoReverse = true,
+                EasingFunction = easing
+            };
+
+            var scaleAnimation = new DoubleAnimation {
+                From = 0.8,
+                To = 1.45,
+                Duration = TimeSpan.FromMilliseconds(360),
+                AutoReverse = true,
+                EasingFunction = easing
+            };
+
+            topAnimation.Completed += (_, __) => {
+                BattleEffectCanvas.Children.Remove(particle);
+                completed++;
+                if (completed >= count) {
+                    tcs.TrySetResult(true);
+                }
+            };
+
+            particle.BeginAnimation(UIElement.OpacityProperty, opacityAnimation);
+            particle.BeginAnimation(Canvas.LeftProperty, leftAnimation);
+            particle.BeginAnimation(Canvas.TopProperty, topAnimation);
+            if (particle.RenderTransform is ScaleTransform scaleTransform) {
+                scaleTransform.BeginAnimation(ScaleTransform.ScaleXProperty, scaleAnimation);
+                scaleTransform.BeginAnimation(ScaleTransform.ScaleYProperty, scaleAnimation);
+            }
+        }
+
+        return tcs.Task;
+    }
+
     private static bool IsSpellAttack(BattleActionSummaryDto summary) {
         if (!summary.AppliedEffects.Any(effect => effect.Kind == AppliedEffectKind.Damage && effect.Amount > 0)) {
             return false;
@@ -589,6 +689,10 @@ SetAbilities(CreatePlaceholderBattleAbilities());
 
         return !string.Equals(summary.Ability.Id, "basic-attack", StringComparison.OrdinalIgnoreCase)
             && !summary.Ability.Name.Contains("Attack", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static bool IsHealingMove(BattleActionSummaryDto summary) {
+        return summary.AppliedEffects.Any(effect => effect.Kind == AppliedEffectKind.Heal && effect.Amount > 0);
     }
 
     private (BattleCreatureDto Player, BattleCreatureDto Enemy) ResolveCreatures(BattleStateDto state) {
@@ -620,6 +724,7 @@ SetAbilities(CreatePlaceholderBattleAbilities());
 
             var options = abilities.Select(CreateAbilityOption).ToList();
             SetAbilities(options);
+            UpdateAbilityButtonStates();
         }
         catch (HttpRequestException exception) {
             SetStatus($"Failed to load abilities: {exception.Message}");
