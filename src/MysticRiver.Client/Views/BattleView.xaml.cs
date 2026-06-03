@@ -1,9 +1,12 @@
 using System.Collections.ObjectModel;
 using System.Linq;
 using System.Net.Http;
+using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
+using System.Windows.Media.Animation;
+using System.Windows.Shapes;
 
 using Microsoft.Extensions.DependencyInjection;
 using System.Collections.Specialized;
@@ -153,6 +156,16 @@ SetAbilities(CreatePlaceholderBattleAbilities());
             isAttackInProgress = true;
             SetStatus($"Executing {ability.Label}...");
 
+            // Simple local attack animation for physical moves (e.g., basic-attack)
+            var abilityId = ability.AbilityRequest?.AbilityId ?? ability.Label;
+            var isPhysical = string.Equals(abilityId, "basic-attack", StringComparison.OrdinalIgnoreCase) || (ability.Label?.Contains("Attack") ?? false);
+            if (isPhysical) {
+                try {
+                    await AnimatePlayerAttackAsync();
+                }
+                catch { /* Swallow animation failures; don't block the action */ }
+            }
+
             // Create request: preserve explicit TargetId on ability (self-targeted), otherwise use selectedTarget
             var request = ability.AbilityRequest!;
             if (request.TargetId is null && selectedTarget is not null) {
@@ -178,9 +191,21 @@ SetAbilities(CreatePlaceholderBattleAbilities());
             return;
         }
 
-        _ = Dispatcher.InvokeAsync(() => {
+        _ = Dispatcher.InvokeAsync(async () => {
             if (battleEvent.ActionSummaries is not null) {
+                var (_, enemyCreature) = ResolveCreatures(battleEvent.State);
                 foreach (var summary in battleEvent.ActionSummaries) {
+                    var enemyDidDamage = string.Equals(summary.ActorId, enemyCreature.CreatureId, StringComparison.OrdinalIgnoreCase)
+                        && summary.AppliedEffects.Any(effect => effect.Kind == AppliedEffectKind.Damage && effect.Amount > 0);
+                    if (enemyDidDamage) {
+                        await AnimateEnemyAttackAsync();
+                    }
+
+                    var isSpellAttack = IsSpellAttack(summary);
+                    if (isSpellAttack) {
+                        await AnimateSpellProjectileAsync(summary.ActorId, summary.TargetId);
+                    }
+
                     AppendActionSummary(summary, battleEvent.State);
                 }
             }
@@ -436,6 +461,134 @@ SetAbilities(CreatePlaceholderBattleAbilities());
         if (enemyPanel is not null) {
             enemyPanel.BorderBrush = selectedTarget == enemyCreatureId ? goldBrush : enemyPinkBrush;
         }
+    }
+
+    private Task AnimatePlayerAttackAsync() {
+        // Simple short leap towards the enemy and back
+        var transform = FindName("PlayerTranslate") as TranslateTransform ?? (PlayerCreaturePanel.RenderTransform as TranslateTransform);
+        if (transform is null) {
+            return Task.CompletedTask;
+        }
+
+        var tcs = new TaskCompletionSource<bool>();
+        var distance = 120.0; // pixels to leap forward
+        var anim = new DoubleAnimation {
+            To = distance,
+            Duration = TimeSpan.FromMilliseconds(120),
+            AutoReverse = true,
+            EasingFunction = new QuadraticEase { EasingMode = EasingMode.EaseOut }
+        };
+        anim.Completed += (_, __) => tcs.TrySetResult(true);
+        transform.BeginAnimation(TranslateTransform.XProperty, anim);
+        return tcs.Task;
+    }
+
+    private Task AnimateEnemyAttackAsync() {
+        // Mirror of the player animation: short leap toward the player and back
+        var transform = FindName("EnemyTranslate") as TranslateTransform ?? (EnemyCreaturePanel.RenderTransform as TranslateTransform);
+        if (transform is null) {
+            return Task.CompletedTask;
+        }
+
+        var tcs = new TaskCompletionSource<bool>();
+        var anim = new DoubleAnimation {
+            To = -120.0,
+            Duration = TimeSpan.FromMilliseconds(120),
+            AutoReverse = true,
+            EasingFunction = new QuadraticEase { EasingMode = EasingMode.EaseOut }
+        };
+        anim.Completed += (_, __) => tcs.TrySetResult(true);
+        transform.BeginAnimation(TranslateTransform.XProperty, anim);
+        return tcs.Task;
+    }
+
+    private Task AnimateSpellProjectileAsync(string actorId, string? targetId) {
+        var sourcePanel = string.Equals(actorId, playerCreatureId, StringComparison.OrdinalIgnoreCase) ? PlayerCreaturePanel : EnemyCreaturePanel;
+        var targetCreatureId = targetId ?? (string.Equals(actorId, playerCreatureId, StringComparison.OrdinalIgnoreCase) ? enemyCreatureId : playerCreatureId);
+        var targetPanel = string.Equals(targetCreatureId, playerCreatureId, StringComparison.OrdinalIgnoreCase) ? PlayerCreaturePanel : EnemyCreaturePanel;
+
+        if (sourcePanel is null || targetPanel is null || BattleEffectCanvas is null) {
+            return Task.CompletedTask;
+        }
+
+        var sourcePoint = sourcePanel.TranslatePoint(new Point(sourcePanel.ActualWidth / 2, sourcePanel.ActualHeight / 2), BattleEffectCanvas);
+        var targetPoint = targetPanel.TranslatePoint(new Point(targetPanel.ActualWidth / 2, targetPanel.ActualHeight / 2), BattleEffectCanvas);
+
+        var projectile = new Ellipse {
+            Width = 30,
+            Height = 30,
+            Opacity = 0.0,
+            IsHitTestVisible = false,
+            Fill = new RadialGradientBrush(
+                Color.FromRgb(255, 236, 179),
+                Color.FromRgb(244, 114, 182))
+            {
+                GradientOrigin = new Point(0.35, 0.35),
+                Center = new Point(0.45, 0.45),
+                RadiusX = 0.55,
+                RadiusY = 0.55
+            },
+            RenderTransform = new ScaleTransform(1.0, 1.0)
+        };
+
+        Canvas.SetLeft(projectile, sourcePoint.X - projectile.Width / 2);
+        Canvas.SetTop(projectile, sourcePoint.Y - projectile.Height / 2);
+        BattleEffectCanvas.Children.Add(projectile);
+
+        var tcs = new TaskCompletionSource<bool>();
+        var duration = TimeSpan.FromMilliseconds(1040);
+        var easing = new QuadraticEase { EasingMode = EasingMode.EaseOut };
+
+        var leftAnimation = new DoubleAnimation {
+            To = targetPoint.X - projectile.Width / 2,
+            Duration = duration,
+            EasingFunction = easing
+        };
+
+        var topAnimation = new DoubleAnimation {
+            To = targetPoint.Y - projectile.Height / 2,
+            Duration = duration,
+            EasingFunction = easing
+        };
+
+        var opacityAnimation = new DoubleAnimation {
+            From = 0.0,
+            To = 1.0,
+            Duration = TimeSpan.FromMilliseconds(360),
+            AutoReverse = true,
+            EasingFunction = easing
+        };
+
+        var scaleAnimation = new DoubleAnimation {
+            From = 1.0,
+            To = 1.45,
+            Duration = TimeSpan.FromMilliseconds(520),
+            AutoReverse = true,
+            EasingFunction = easing
+        };
+
+        topAnimation.Completed += (_, __) => {
+            BattleEffectCanvas.Children.Remove(projectile);
+            tcs.TrySetResult(true);
+        };
+
+        projectile.BeginAnimation(UIElement.OpacityProperty, opacityAnimation);
+        projectile.BeginAnimation(Canvas.LeftProperty, leftAnimation);
+        projectile.BeginAnimation(Canvas.TopProperty, topAnimation);
+        if (projectile.RenderTransform is ScaleTransform scaleTransform) {
+            scaleTransform.BeginAnimation(ScaleTransform.ScaleXProperty, scaleAnimation);
+            scaleTransform.BeginAnimation(ScaleTransform.ScaleYProperty, scaleAnimation);
+        }
+        return tcs.Task;
+    }
+
+    private static bool IsSpellAttack(BattleActionSummaryDto summary) {
+        if (!summary.AppliedEffects.Any(effect => effect.Kind == AppliedEffectKind.Damage && effect.Amount > 0)) {
+            return false;
+        }
+
+        return !string.Equals(summary.Ability.Id, "basic-attack", StringComparison.OrdinalIgnoreCase)
+            && !summary.Ability.Name.Contains("Attack", StringComparison.OrdinalIgnoreCase);
     }
 
     private (BattleCreatureDto Player, BattleCreatureDto Enemy) ResolveCreatures(BattleStateDto state) {

@@ -92,6 +92,12 @@
                     <ColumnDefinition Width="*" />
                 </Grid.ColumnDefinitions>
 
+                <Canvas x:Name="BattleEffectCanvas"
+                        Grid.Row="1"
+                        Grid.ColumnSpan="3"
+                        Panel.ZIndex="10"
+                        IsHitTestVisible="False" />
+
                 <Border x:Name="PlayerCreaturePanel"
                         Grid.Column="0"
                         Width="280"
@@ -104,6 +110,9 @@
                         CornerRadius="10"
                         MouseDown="PlayerCreature_Click"
                         Cursor="Hand">
+                    <Border.RenderTransform>
+                        <TranslateTransform x:Name="PlayerTranslate" />
+                    </Border.RenderTransform>
                     <StackPanel>
                         <Image Width="240"
                                Height="240"
@@ -170,6 +179,9 @@
                         CornerRadius="10"
                         MouseDown="EnemyCreature_Click"
                         Cursor="Hand">
+                    <Border.RenderTransform>
+                        <TranslateTransform x:Name="EnemyTranslate" />
+                    </Border.RenderTransform>
                     <StackPanel>
                         <Image Width="240"
                                Height="240"
