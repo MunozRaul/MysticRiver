@@ -15,6 +15,10 @@ public class InitiativeAttackOrderTests {
 
     private static DamageMove Attack(Creature source, Creature destination, int damage) =>
         new DamageMove(damage, DamageKind.Physical) { Source = source, Destination = destination };
+    private static SelfStatusMove ApplyHaste(Creature self) =>
+        new SelfStatusMove(StatusEffect.Haste) { Self = self };
+    private static StatusEffectMove ApplySlow(Creature source, Creature destination) =>
+        new StatusEffectMove(StatusEffect.Slow) { Source = source, Destination = destination };
 
     [Fact]
     public void ExecuteTurn_HigherInitiativeAttacksFirst() {
@@ -77,6 +81,38 @@ public class InitiativeAttackOrderTests {
     }
 
     [Fact]
+    public void ExecuteTurn_HasteRaisesInitiativeOnNextTurn() {
+        var (battle, p1, p2) = CreateBattle(hp1: 10, hp2: 10, initiative1: 10, initiative2: 10);
+
+        battle.ExecuteTurn(
+            Attack(p1, p2, 0),
+            ApplyHaste(p2));
+
+        battle.ExecuteTurn(
+            Attack(p1, p2, 10),
+            Attack(p2, p1, 10));
+
+        Assert.Equal(0, p1.CurrentHp);
+        Assert.Equal(10, p2.CurrentHp);
+    }
+
+    [Fact]
+    public void ExecuteTurn_SlowLowersInitiativeOnNextTurn() {
+        var (battle, p1, p2) = CreateBattle(hp1: 10, hp2: 10, initiative1: 10, initiative2: 6);
+
+        battle.ExecuteTurn(
+            Attack(p1, p2, 0),
+            ApplySlow(p2, p1));
+
+        battle.ExecuteTurn(
+            Attack(p1, p2, 10),
+            Attack(p2, p1, 10));
+
+        Assert.Equal(0, p1.CurrentHp);
+        Assert.Equal(10, p2.CurrentHp);
+    }
+
+    [Fact]
     public void Constructor_WhenInitiativeIsNegative_ThrowsArgumentOutOfRangeException() {
         var ex = Assert.Throws<ArgumentOutOfRangeException>(() => new Creature("Gruk", 100, -1));
         Assert.Equal("initiative", ex.ParamName);
@@ -89,5 +125,27 @@ public class InitiativeAttackOrderTests {
         Assert.Equal(0, creature.Initiative);
         Assert.False(creature.IsDead);
         Assert.Equal(100, creature.CurrentHp);
+    }
+
+    [Fact]
+    public void EffectiveInitiative_HasteAndSlowCancelOut() {
+        var creature = new Creature("Gruk", 100, 10);
+
+        creature.ApplyStatus(StatusEffect.Haste);
+        creature.ApplyStatus(StatusEffect.Slow);
+
+        Assert.Equal(10, creature.EffectiveInitiative);
+    }
+
+    [Fact]
+    public void EffectiveInitiative_SlowAppliesAlongsideParalysis() {
+        var creature = new Creature("Gruk", 100, 10);
+
+        creature.ApplyStatus(StatusEffect.Paralysis);
+        creature.ApplyStatus(StatusEffect.Slow);
+
+        Assert.Equal(5, creature.EffectiveInitiative);
+        Assert.True(creature.Status.HasFlag(StatusEffect.Paralysis));
+        Assert.True(creature.Status.HasFlag(StatusEffect.Slow));
     }
 }

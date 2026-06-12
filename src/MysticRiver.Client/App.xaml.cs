@@ -1,5 +1,5 @@
+using System;
 using System.Windows;
-
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
@@ -11,26 +11,33 @@ namespace MysticRiver.Client;
 
 public partial class App : Application {
     private readonly IHost _host;
-    public static IServiceProvider Services { get; private set; } = null!;
 
     public App() {
         _host = Host.CreateDefaultBuilder()
             .ConfigureServices((context, services) => {
-                services.AddOptions<ClientOptions>()
-                    .Bind(context.Configuration.GetSection(ClientOptions.SectionName));
-                services.AddSingleton(provider => provider.GetRequiredService<IOptions<ClientOptions>>().Value);
-
-                services.AddHttpClient<BattleApiClient>((provider, client) => {
-                    var clientOptions = provider.GetRequiredService<ClientOptions>();
-                    client.BaseAddress = ResolveApiBaseUri(clientOptions);
-                });
-                services.AddSingleton<BattleRealtimeClient>();
                 services.AddSingleton<UpdateService>();
                 services.AddSingleton<MainWindow>();
+                services.AddOptions<ClientOptions>()
+                    .Bind(context.Configuration.GetSection(ClientOptions.SectionName));
+                services.AddSingleton(sp => sp.GetRequiredService<IOptions<ClientOptions>>().Value);
+                services.AddHttpClient<BattleApiClient>((sp, client) => {
+                    var options = sp.GetRequiredService<ClientOptions>();
+                    client.BaseAddress = new Uri(options.ApiBaseUrl);
+                });
+                services.AddSingleton<GuestIdentityService>();
+                services.AddSingleton<BattleRealtimeClient>();
             })
             .Build();
+    }
 
-        Services = _host.Services;
+    public static IServiceProvider Services {
+        get {
+            if (Current is not App app) {
+                throw new InvalidOperationException("The application host is not initialized.");
+            }
+
+            return app._host.Services;
+        }
     }
 
     protected override async void OnStartup(StartupEventArgs e) {
@@ -49,15 +56,5 @@ public partial class App : Application {
         await _host.StopAsync();
         _host.Dispose();
         base.OnExit(e);
-    }
-
-    private static Uri ResolveApiBaseUri(ClientOptions clientOptions) {
-        ArgumentNullException.ThrowIfNull(clientOptions);
-
-        if (!Uri.TryCreate(clientOptions.ApiBaseUrl, UriKind.Absolute, out var uri)) {
-            throw new InvalidOperationException($"Invalid configuration value for {ClientOptions.SectionName}:ApiBaseUrl.");
-        }
-
-        return uri;
     }
 }

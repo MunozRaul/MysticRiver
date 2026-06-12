@@ -4,4 +4,5 @@ namespace MysticRiver.HttpApi.Battles;
 
 public interface IBattleClient {
     Task BattleStateUpdated(BattleStateUpdatedEvent battleStateUpdatedEvent);
+    Task BattleLifecycleUpdated(BattleLifecycleEvent battleLifecycleEvent);
 }

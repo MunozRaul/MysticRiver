@@ -12,6 +12,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\MysticRiver.Application\MysticRiver.Application.csproj" />
     <ProjectReference Include="..\MysticRiver.Contracts\MysticRiver.Contracts.csproj" />
     <ProjectReference Include="..\MysticRiver.Domain\MysticRiver.Domain.csproj" />
   </ItemGroup>

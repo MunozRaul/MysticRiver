@@ -1,4 +1,4 @@
-namespace MysticRiver.HttpApi.Battles;
+namespace MysticRiver.Application.Battles;
 
 public static class BattleParticipantIds {
     public const string Player = "player";

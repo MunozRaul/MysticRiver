@@ -1,3 +1,5 @@
+using System.Threading;
+
 using Microsoft.AspNetCore.SignalR.Client;
 
 using MysticRiver.Client.Options;
@@ -7,8 +9,16 @@ namespace MysticRiver.Client.Services;
 
 public sealed class BattleRealtimeClient : IAsyncDisposable {
     private readonly HubConnection _hubConnection;
+    private readonly SemaphoreSlim _connectionLock = new(1, 1);
+    private Task? _connectionStartTask;
+    private string? _joinedBattleId;
+    private string? _joinedPlayerId;
+    private string? _joinedDisplayName;
 
     public event EventHandler<BattleStateUpdatedEvent>? BattleStateUpdated;
+    public event EventHandler<BattleLifecycleEvent>? BattleLifecycleUpdated;
+    public event EventHandler<string>? PlayerTokenRefreshed;
+    public event EventHandler? Reconnected;
 
     public BattleRealtimeClient(ClientOptions clientOptions) {
         ArgumentNullException.ThrowIfNull(clientOptions);
@@ -23,10 +33,20 @@ public sealed class BattleRealtimeClient : IAsyncDisposable {
             .WithUrl(hubUrl)
             .WithAutomaticReconnect()
             .Build();
-
+ 
         _hubConnection.On<BattleStateUpdatedEvent>(
             "BattleStateUpdated",
             battleEvent => BattleStateUpdated?.Invoke(this, battleEvent));
+
+        _hubConnection.On<BattleLifecycleEvent>(
+            "BattleLifecycleUpdated",
+            lifecycleEvent => BattleLifecycleUpdated?.Invoke(this, lifecycleEvent));
+
+        // Forward reconnect notifications so callers can refresh full state if needed
+        _hubConnection.Reconnected += async connectionId => {
+            await RejoinAndRefreshTokenAsync();
+            Reconnected?.Invoke(this, EventArgs.Empty);
+        };
     }
 
     public async Task EnsureConnectedAsync(CancellationToken cancellationToken = default) {
@@ -34,16 +54,72 @@ public sealed class BattleRealtimeClient : IAsyncDisposable {
             return;
         }
 
-        await _hubConnection.StartAsync(cancellationToken);
+        await _connectionLock.WaitAsync(cancellationToken);
+        try {
+            if (_hubConnection.State == HubConnectionState.Connected) {
+                return;
+            }
+
+            if (_hubConnection.State == HubConnectionState.Disconnected) {
+                _connectionStartTask = _hubConnection.StartAsync(cancellationToken);
+            }
+        }
+        finally {
+            _connectionLock.Release();
+        }
+
+        if (_connectionStartTask is not null) {
+            await _connectionStartTask;
+            return;
+        }
+
+        while (_hubConnection.State is HubConnectionState.Connecting or HubConnectionState.Reconnecting) {
+            await Task.Delay(100, cancellationToken);
+        }
+
+        if (_hubConnection.State == HubConnectionState.Disconnected) {
+            _connectionStartTask = _hubConnection.StartAsync(cancellationToken);
+            await _connectionStartTask;
+        }
     }
 
-    public async Task JoinBattleAsync(string battleId, CancellationToken cancellationToken = default) {
+    public async Task<string> JoinBattleAsync(string battleId, string playerId, string displayName, CancellationToken cancellationToken = default) {
         ArgumentException.ThrowIfNullOrWhiteSpace(battleId);
+        ArgumentException.ThrowIfNullOrWhiteSpace(playerId);
         await EnsureConnectedAsync(cancellationToken);
-        await _hubConnection.InvokeAsync("JoinBattle", battleId, cancellationToken);
+        var token = await _hubConnection.InvokeAsync<string>("JoinBattle", battleId, playerId, displayName, cancellationToken);
+        _joinedBattleId = battleId;
+        _joinedPlayerId = playerId;
+        _joinedDisplayName = displayName;
+        return token;
+    }
+
+    public async Task DisconnectAsync(CancellationToken cancellationToken = default) {
+        if (_hubConnection.State == HubConnectionState.Disconnected) {
+            return;
+        }
+
+        await _hubConnection.StopAsync(cancellationToken);
+        _connectionStartTask = null;
+        _joinedBattleId = null;
+        _joinedPlayerId = null;
+        _joinedDisplayName = null;
     }
 
     public async ValueTask DisposeAsync() {
         await _hubConnection.DisposeAsync();
+    }
+
+    private async Task RejoinAndRefreshTokenAsync() {
+        if (string.IsNullOrWhiteSpace(_joinedBattleId) || string.IsNullOrWhiteSpace(_joinedPlayerId)) {
+            return;
+        }
+
+        var token = await _hubConnection.InvokeAsync<string>(
+            "JoinBattle",
+            _joinedBattleId,
+            _joinedPlayerId,
+            _joinedDisplayName ?? _joinedPlayerId);
+        PlayerTokenRefreshed?.Invoke(this, token);
     }
 }

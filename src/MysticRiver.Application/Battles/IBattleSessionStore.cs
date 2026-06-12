@@ -1,6 +1,6 @@
 using MysticRiver.Contracts.Battle;
 
-namespace MysticRiver.HttpApi.Battles;
+namespace MysticRiver.Application.Battles;
 
 public interface IBattleSessionStore {
     BattleSession Create(StartBattleRequest request);
