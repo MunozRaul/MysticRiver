@@ -16,17 +16,20 @@ public sealed class BattlesController(
     IBattleService battleService,
     IHubContext<BattleHub, IBattleClient> battleHubContext,
     IConnectionMapping connectionMapping,
+    BattleSessionPersistenceService persistenceService,
     ILogger<BattlesController> logger) : ControllerBase {
     private readonly IBattleService _battleService = battleService;
     private readonly IHubContext<BattleHub, IBattleClient> _battleHubContext = battleHubContext;
     private readonly IConnectionMapping _connectionMapping = connectionMapping;
+    private readonly BattleSessionPersistenceService _persistenceService = persistenceService;
     private readonly ILogger<BattlesController> _logger = logger;
 
     [HttpPost("matches/create")]
-    public ActionResult<CreateMatchResponse> CreateMatch([FromBody] CreateMatchRequest request) {
+    public async Task<ActionResult<CreateMatchResponse>> CreateMatch([FromBody] CreateMatchRequest request) {
         try {
             var response = _battleService.CreateMatch(request);
             _logger.LogInformation("Match {BattleId} created for host {HostPlayerId}", response.BattleId, response.HostPlayerId);
+            await _persistenceService.SaveSessionSnapshotAsync(_battleService.GetSession(response.BattleId));
             return Ok(response);
         }
         catch (ArgumentException exception) {
@@ -36,10 +39,11 @@ public sealed class BattlesController(
     }
 
     [HttpPost("{battleId}/matches/join")]
-    public ActionResult<JoinMatchResponse> JoinMatch(string battleId, [FromBody] JoinMatchRequest request) {
+    public async Task<ActionResult<JoinMatchResponse>> JoinMatch(string battleId, [FromBody] JoinMatchRequest request) {
         try {
             var response = _battleService.JoinMatch(battleId, request);
             _logger.LogInformation("Match {BattleId} joined by guest {GuestPlayerId}", response.BattleId, response.GuestPlayerId);
+            await _persistenceService.SaveSessionSnapshotAsync(_battleService.GetSession(battleId));
             return Ok(response);
         }
         catch (KeyNotFoundException exception) {
@@ -57,11 +61,12 @@ public sealed class BattlesController(
     }
 
     [HttpPost("start")]
-    public ActionResult<StartBattleResponse> StartBattle([FromBody] StartBattleRequest request) {
+    public async Task<ActionResult<StartBattleResponse>> StartBattle([FromBody] StartBattleRequest request) {
         try {
             _logger.LogInformation("Battle started: {PlayerName} vs {EnemyName}", request.PlayerName, request.EnemyName);
             var response = _battleService.StartBattle(request);
             _logger.LogInformation("Battle {BattleId} created successfully", response.BattleId);
+            await _persistenceService.SaveSessionSnapshotAsync(_battleService.GetSession(response.BattleId));
             return Ok(response);
         }
         catch (ArgumentException exception) {
@@ -228,6 +233,14 @@ public sealed class BattlesController(
         {
             var result = action();
             _logger.LogInformation("Battle {BattleId}: {ActionType} executed at round {Round}", battleId, actionType, result.State.RoundNumber);
+
+            // Persist snapshot after every state change
+            try {
+                await _persistenceService.SaveSessionSnapshotAsync(_battleService.GetSession(battleId));
+            } catch (Exception ex) {
+                _logger.LogWarning(ex, "Battle {BattleId}: Failed to persist snapshot after {ActionType}", battleId, actionType);
+            }
+
             var battleEvent = new BattleStateUpdatedEvent(battleId, result.State, result.ActionSummaries);
 
             await _battleHubContext.Clients.Group(battleId).BattleStateUpdated(battleEvent);

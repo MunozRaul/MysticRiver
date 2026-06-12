@@ -17,3 +17,9 @@ spec:
         image: ghcr.io/munozraul/mysticriver/mysticriver-api:latest
         ports:
         - containerPort: 8080
+        env:
+        - name: ConnectionStrings__MysticRiverDb
+          valueFrom:
+            secretKeyRef:
+              name: postgres-secret
+              key: MYSTICRIVER_DB_CONNECTION_STRING

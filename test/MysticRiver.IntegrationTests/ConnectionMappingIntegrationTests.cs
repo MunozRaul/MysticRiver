@@ -3,11 +3,13 @@ using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.SignalR;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
 using Xunit;
 using MysticRiver.HttpApi.Battles;
 using MysticRiver.HttpApi.Controllers;
 using MysticRiver.Application.Battles;
+using MysticRiver.Application.Data;
 using MysticRiver.Contracts.Battle;
 
 namespace MysticRiver.IntegrationTests;
@@ -67,7 +69,13 @@ public class ConnectionMappingIntegrationTests {
         var fakeHubContext = new FakeHubContext(fakeClients);
         var logger = NullLogger<BattlesController>.Instance;
 
-        var controller = new BattlesController(battleService, fakeHubContext, mapping, logger);
+        var dbOptions = new DbContextOptionsBuilder<MysticRiverDbContext>()
+            .UseInMemoryDatabase("test-abandon-integration")
+            .Options;
+        var dbContext = new MysticRiverDbContext(dbOptions);
+        var persistenceSvc = new BattleSessionPersistenceService(dbContext);
+
+        var controller = new BattlesController(battleService, fakeHubContext, mapping, persistenceSvc, logger);
         // Set up HttpContext with header
         controller.ControllerContext = new Microsoft.AspNetCore.Mvc.ControllerContext {
             HttpContext = new DefaultHttpContext()

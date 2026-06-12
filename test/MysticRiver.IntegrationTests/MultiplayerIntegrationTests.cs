@@ -7,8 +7,8 @@ using MysticRiver.Contracts.Battle;
 
 namespace MysticRiver.IntegrationTests;
 
-public sealed class MultiplayerIntegrationTests(WebApplicationFactory<Program> factory) : IClassFixture<WebApplicationFactory<Program>> {
-    private readonly WebApplicationFactory<Program> _factory = factory;
+public sealed class MultiplayerIntegrationTests(InMemoryApiFactory factory) : IClassFixture<InMemoryApiFactory> {
+    private readonly InMemoryApiFactory _factory = factory;
 
     [Fact]
     public async Task CreateMatch_ReturnsMatchWithWaitingForOpponentState() {

@@ -7,6 +7,7 @@ public interface IBattleService {
     JoinMatchResponse JoinMatch(string battleId, JoinMatchRequest request);
     StartBattleResponse StartBattle(StartBattleRequest request);
     BattleStateDto GetBattleState(string battleId);
+    BattleSession GetSession(string battleId);
     bool RequiresPlayerToken(string battleId);
     void ValidateRealtimeJoin(string battleId, string playerId);
     IReadOnlyList<AbilityDefinitionDto> GetAbilities();

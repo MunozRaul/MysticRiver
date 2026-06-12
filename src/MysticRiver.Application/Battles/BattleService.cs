@@ -94,6 +94,11 @@ public sealed class BattleService(IBattleSessionStore battleSessionStore) : IBat
         }
     }
 
+    public BattleSession GetSession(string battleId) {
+        ArgumentException.ThrowIfNullOrWhiteSpace(battleId);
+        return GetRequiredSession(battleId);
+    }
+
     public bool RequiresPlayerToken(string battleId)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(battleId);
